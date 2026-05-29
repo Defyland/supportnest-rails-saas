@@ -25,12 +25,18 @@ SupportNest ships k6 scenarios for four baseline shapes:
 
 ## Execution note
 
-The committed benchmark runs use `k6 v1.7.1` installed via `go install`. Measurements are taken against a warmed local server with `RATE_LIMIT_REQUESTS_PER_MINUTE` raised to avoid benchmark noise from intentional throttling.
+The committed benchmark runs use `k6 v1.7.1` installed via `go install`. The benchmark runner uses the isolated `benchmark` Rails environment and raises `RATE_LIMIT_REQUESTS_PER_MINUTE` for the managed server to avoid benchmark noise from intentional throttling.
 
-Each committed run also:
+`bin/benchmark <scenario>` performs the full capture flow:
 
+- resets and migrates the benchmark database unless `BENCHMARK_PREPARE_DB=0`
+- starts Puma unless `BASE_URL` is provided or `BENCHMARK_SKIP_SERVER=1`
+- waits for `/ready` before running k6
 - exports trend stats with `med`, `p(95)`, and `p(99)` enabled
 - stores the raw k6 text summary and JSON summary under `benchmarks/results/`
 - samples the Puma process once per second with `ps` to capture `%CPU` and RSS peaks
+- writes the managed server log as `benchmarks/results/<scenario>-server.log`
 
-Use `bin/benchmark smoke`, `bin/benchmark load`, `bin/benchmark stress`, or `bin/benchmark spike` to run the same capture flow. Set `SERVER_PID` to capture process samples for a running Puma process, and set `K6_BIN` if k6 is not installed at the default local path.
+Use `bin/benchmark smoke`, `bin/benchmark load`, `bin/benchmark stress`, or `bin/benchmark spike` to run the same capture flow. Set `K6_BIN` if k6 is not on `PATH`.
+
+For an already running server, set `BASE_URL` and optionally `SERVER_PID`; in that mode the runner does not own server startup or shutdown.

@@ -50,6 +50,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/models/outbound_event_test.rb
     test/services/mutation_transaction_boundaries_test.rb
     test/services/security_authorizer_test.rb
+    test/services/ticket_concurrency_test.rb
   ].freeze
 
   REQUIRED_CI_CHECKS = [
@@ -58,6 +59,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     "bundle exec brakeman --quiet --no-pager --exit-on-warn --exit-on-error",
     "bin/rails test",
     "npx @redocly/cli@latest lint openapi.yaml",
+    "postgres:16",
     "docker build -t supportnest-ci .",
     "actions/upload-artifact@v4"
   ].freeze
@@ -74,11 +76,13 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     %w[
       README.md
       openapi.yaml
+      db/schema.sqlite.rb
       config/authorization_matrix.yml
       docs/api/http-examples.md
       docs/api/error-format.md
       docs/benchmarks/methodology.md
       docs/benchmarks/local-baseline.md
+      docs/adr/003-postgresql-primary.md
       docs/runbooks/common-issues.md
     ].each do |path|
       assert_path_exists path
@@ -144,6 +148,20 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     end
   end
 
+  test "keeps PostgreSQL as the primary verified database with explicit SQLite fallback" do
+    database_config = read_file("config/database.yml")
+    docker_compose = read_file("docker-compose.yml")
+    adr = read_file("docs/adr/003-postgresql-primary.md")
+
+    assert_includes database_config, "adapter: postgresql"
+    assert_includes database_config, "DATABASE_ADAPTER"
+    assert_includes database_config, "adapter: sqlite3"
+    assert_includes database_config, "schema_dump: schema.sqlite.rb"
+    assert_includes database_config, "supportnest_test"
+    assert_includes docker_compose, "postgres:16"
+    assert_includes adr, "PostgreSQL as the default database"
+  end
+
   test "keeps security observability and data consistency artifacts required by the spec" do
     threat_model = read_file("docs/security/threat-model.md")
     authorization_matrix = read_file("docs/security/authorization-matrix.md")
@@ -193,6 +211,20 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
 
     assert_includes local_baseline, "CPU"
     assert_includes local_baseline, "RSS"
+
+    benchmark_runner = read_file("bin/benchmark")
+    %w[
+      BENCHMARK_RAILS_ENV
+      db:drop
+      db:create
+      db:migrate
+      wait_for_ready!
+      server
+      resource-samples
+      RATE_LIMIT_REQUESTS_PER_MINUTE
+    ].each do |term|
+      assert_includes benchmark_runner, term
+    end
 
     REQUIRED_SCENARIOS.each do |scenario|
       assert_includes baseline.downcase, scenario

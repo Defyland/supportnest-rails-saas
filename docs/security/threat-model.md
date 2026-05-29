@@ -23,7 +23,7 @@ This model covers the current SupportNest slice:
 
 1. Public HTTP API boundary
 2. Rails application boundary
-3. SQLite persistence boundary
+3. PostgreSQL persistence boundary
 4. Async job boundary between request path and outbound dispatch
 
 ## Primary threats
@@ -51,6 +51,7 @@ This model covers the current SupportNest slice:
 
 - BOLA and tenant isolation: `AuthorizationAndIsolationTest`
 - Quota abuse: `FailureScenariosTest`
+- Concurrent ticket sequence and quota abuse: `TicketConcurrencyTest`
 - Invalid input: `FailureScenariosTest`
 - Async failure handling: `OutboundEventDispatchJobTest`
 - Authorization: `AuthorizationAndIsolationTest`
@@ -59,6 +60,6 @@ This model covers the current SupportNest slice:
 
 - device/session attribution for token use
 - externalized audit sink
-- PostgreSQL plus row-level or schema-level tenant hardening
+- row-level or schema-level tenant hardening beyond application scoping
 - broker-backed outbox relay with retries and dead-letter handling
 - formal secret source for production deployment

@@ -1,11 +1,16 @@
 #!/usr/bin/env ruby
 require "fileutils"
+require "net/http"
 require "open3"
+require "rbconfig"
 require "time"
+require "timeout"
+require "uri"
 
 APP_ROOT = File.expand_path("..", __dir__)
 SCENARIOS = %w[smoke load stress spike].freeze
 DEFAULT_K6 = "/Users/allanflavio/.asdf/installs/golang/1.23.3/packages/bin/k6"
+RUBY = RbConfig.ruby
 
 scenario = ARGV.fetch(0, nil)
 
@@ -14,50 +19,149 @@ unless SCENARIOS.include?(scenario)
   exit 64
 end
 
-base_url = ENV.fetch("BASE_URL", "http://127.0.0.1:3000")
-k6 = ENV.fetch("K6_BIN", DEFAULT_K6)
+def detected_k6
+  stdout, status = Open3.capture2("sh", "-lc", "command -v k6")
+  return stdout.strip if status.success? && !stdout.strip.empty?
+
+  DEFAULT_K6
+end
+
+rails_env = ENV.fetch("BENCHMARK_RAILS_ENV", "benchmark")
+host = ENV.fetch("BENCHMARK_HOST", "127.0.0.1")
+port = ENV.fetch("PORT", "3000")
+base_url = ENV.fetch("BASE_URL", "http://#{host}:#{port}")
+k6 = ENV.fetch("K6_BIN", detected_k6)
+prepare_database = ENV.fetch("BENCHMARK_PREPARE_DB", "1") == "1"
+managed_server = ENV["BASE_URL"].nil? && ENV.fetch("BENCHMARK_SKIP_SERVER", "0") != "1"
 results_dir = File.join(APP_ROOT, "benchmarks/results")
 summary_path = File.join(results_dir, "#{scenario}-summary.txt")
 json_path = File.join(results_dir, "#{scenario}-summary.json")
 samples_path = File.join(results_dir, "#{scenario}-resource-samples.tsv")
+server_log_path = File.join(results_dir, "#{scenario}-server.log")
+pidfile_path = File.join(APP_ROOT, "tmp/pids/benchmark-#{scenario}.pid")
 
 FileUtils.mkdir_p(results_dir)
-FileUtils.rm_f([ summary_path, json_path, samples_path ])
+FileUtils.rm_f([ summary_path, json_path, samples_path, server_log_path, pidfile_path ])
 
-server_pid = ENV["SERVER_PID"]
-monitor_pid = nil
+def run!(*command, env: {})
+  system(env, *command, chdir: APP_ROOT, exception: true)
+end
 
-if server_pid
-  monitor_pid = fork do
+def process_alive?(pid)
+  Process.kill(0, pid)
+  true
+rescue Errno::ESRCH
+  false
+end
+
+def wait_for_ready!(base_url, server_pid:)
+  uri = URI("#{base_url}/ready")
+  deadline = Time.now + Integer(ENV.fetch("BENCHMARK_BOOT_TIMEOUT", "30"), 10)
+
+  until Time.now > deadline
+    begin
+      raise "benchmark server exited before readiness" if server_pid && !process_alive?(server_pid)
+
+      response = Net::HTTP.start(uri.host, uri.port, open_timeout: 1, read_timeout: 1) do |http|
+        http.get(uri.request_uri)
+      end
+      return if response.code.to_i == 200
+
+      sleep 0.5
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError, Net::OpenTimeout, Net::ReadTimeout
+      sleep 0.5
+    end
+  end
+
+  if server_pid && !process_alive?(server_pid)
+    raise "benchmark server exited before readiness"
+  end
+
+  raise "benchmark server did not become ready at #{uri}"
+end
+
+def start_resource_monitor(pid, samples_path)
+  return unless pid
+
+  File.open(samples_path, "w") { |file| file.puts("timestamp\tcpu_percent\trss_kb") }
+
+  fork do
     loop do
-      break unless system("kill", "-0", server_pid, out: File::NULL, err: File::NULL)
+      break unless process_alive?(pid)
 
-      sample, = Open3.capture2("ps", "-p", server_pid, "-o", "%cpu=,rss=")
-      File.open(samples_path, "a") do |file|
-        file.puts("#{Time.now.utc.iso8601}\t#{sample.strip}")
+      sample, = Open3.capture2("ps", "-p", pid.to_s, "-o", "%cpu=,rss=")
+      unless sample.strip.empty?
+        cpu_percent, rss_kb = sample.split
+        File.open(samples_path, "a") do |file|
+          file.puts("#{Time.now.utc.iso8601}\t#{cpu_percent}\t#{rss_kb}")
+        end
       end
       sleep 1
     end
   end
 end
 
-command = [
-  k6,
-  "run",
-  "--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99)",
-  "--summary-export",
-  json_path,
-  File.join(APP_ROOT, "benchmarks/#{scenario}.js")
-]
+def terminate_process(pid)
+  return unless pid
 
-env = { "BASE_URL" => base_url }
-status = nil
-
-File.open(summary_path, "w") do |summary|
-  status = system(env, *command, out: summary, err: summary)
+  Process.kill("TERM", pid)
+  Timeout.timeout(10) { Process.wait(pid) }
+rescue Errno::ESRCH, Errno::ECHILD
+  nil
+rescue Timeout::Error
+  Process.kill("KILL", pid)
+  Process.wait(pid)
+rescue Errno::ESRCH, Errno::ECHILD
+  nil
 end
 
-Process.kill("TERM", monitor_pid) if monitor_pid
-Process.wait(monitor_pid) if monitor_pid
+server_pid = nil
+monitor_pid = nil
+server_log = nil
 
-exit(status ? 0 : 1)
+begin
+  if prepare_database
+    run!(RUBY, "bin/rails", "db:drop", "db:create", "db:migrate", env: { "RAILS_ENV" => rails_env })
+  end
+
+  if managed_server
+    server_log = File.open(server_log_path, "w")
+    server_env = ENV.to_h.merge(
+      "RAILS_ENV" => rails_env,
+      "PORT" => port,
+      "PIDFILE" => pidfile_path,
+      "RAILS_LOG_TO_STDOUT" => "1",
+      "RATE_LIMIT_REQUESTS_PER_MINUTE" => ENV.fetch("RATE_LIMIT_REQUESTS_PER_MINUTE", "100000")
+    )
+    server_pid = spawn(server_env, RUBY, "bin/rails", "server", "-b", host, "-p", port,
+                       chdir: APP_ROOT, out: server_log, err: server_log)
+    wait_for_ready!(base_url, server_pid: server_pid)
+  else
+    wait_for_ready!(base_url, server_pid: nil)
+  end
+
+  monitored_pid = server_pid || ENV["SERVER_PID"]&.to_i
+  monitor_pid = start_resource_monitor(monitored_pid, samples_path)
+
+  command = [
+    k6,
+    "run",
+    "--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99)",
+    "--summary-export",
+    json_path,
+    File.join(APP_ROOT, "benchmarks/#{scenario}.js")
+  ]
+
+  env = { "BASE_URL" => base_url }
+  status = nil
+
+  File.open(summary_path, "w") do |summary|
+    status = system(env, *command, chdir: APP_ROOT, out: summary, err: summary)
+  end
+
+  exit(status ? 0 : 1)
+ensure
+  terminate_process(monitor_pid)
+  terminate_process(server_pid)
+  server_log&.close
+end

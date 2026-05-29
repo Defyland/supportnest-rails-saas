@@ -73,9 +73,10 @@
 
 ## Isolation assumptions
 
-- current local baseline uses SQLite transactions
+- PostgreSQL is the primary development, test, benchmark, and CI database
 - ticket creation relies on an explicit organization row lock within a transaction to serialize ticket sequence allocation
-- production should move to PostgreSQL and revalidate lock behavior under real concurrent writers
+- `test/services/ticket_concurrency_test.rb` verifies contiguous tenant ticket IDs and quota enforcement under concurrent PostgreSQL writers
+- SQLite is available only as an explicit local fallback and is not the authoritative concurrency verification path
 
 ## Migration strategy
 
@@ -91,4 +92,4 @@
 
 ## Known trade-off
 
-SQLite is acceptable for the self-contained challenge but is not the target production database for this design.
+The outbox dispatcher is still local Active Job execution. Production messaging should move to a durable external worker or broker while preserving the same persisted outbox state machine.

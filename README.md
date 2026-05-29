@@ -59,7 +59,8 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/dia
 
 - Ruby `3.3.6`
 - Rails `8.1`
-- SQLite for the self-contained local exercise
+- PostgreSQL as the primary development, test, benchmark, and CI database
+- SQLite fallback through `DATABASE_ADAPTER=sqlite3` for a minimal local-only path
 - Puma
 - Active Job with the async adapter
 - OpenTelemetry SDK and Rails instrumentation
@@ -118,6 +119,7 @@ This keeps the request path fast while making integrations observable and retry-
 - `tickets.lock_version` is exposed through `ETag`/`If-Match` for optimistic locking
 - uniqueness and foreign-key constraints backstop application-level validations
 - ticket identifiers are allocated from a tenant sequence inside the ticket creation transaction
+- PostgreSQL row locking serializes tenant ticket sequence and quota updates under concurrent writers
 
 See [docs/architecture/data-consistency.md](docs/architecture/data-consistency.md).
 
@@ -129,6 +131,7 @@ The suite covers:
 - request/integration tests for bootstrap, memberships, tickets, and isolation
 - authorization tests for forbidden viewer actions
 - database constraint tests for unique indexes
+- PostgreSQL concurrency tests for tenant ticket sequence allocation and quota exhaustion
 - job tests for outbound dispatch success and failure modes
 - failure scenario coverage for unsupported event dispatch and rate limiting
 - OpenAPI response contract tests for representative API flows
@@ -143,11 +146,12 @@ Run with `bin/rails test`.
 - baseline definition: [benchmarks/baseline.md](benchmarks/baseline.md)
 - captured results: [docs/benchmarks/local-baseline.md](docs/benchmarks/local-baseline.md)
 
+The runner prepares an isolated `benchmark` database, starts Puma, waits for `/ready`, runs k6, captures CPU/RSS samples, and writes summaries under `benchmarks/results/`.
+
 ## 13. Observability
 
 - JSON structured logs via `JsonLogFormatter`
 - request-scoped `request_id` and `correlation_id`
-- OpenTelemetry instrumentation for Rack, Action Pack, Active Record, Active Job, and Active Support
 - `/up` liveness probe
 - `/ready` readiness probe with database check
 - `/metrics` plaintext Prometheus endpoint
@@ -179,7 +183,7 @@ Security references:
 
 ## 15. Trade-offs and decisions
 
-- SQLite keeps the challenge runnable without external services; production should move to PostgreSQL.
+- PostgreSQL is the primary runtime database; SQLite remains only as an explicit local fallback via `DATABASE_ADAPTER=sqlite3`.
 - Active Job `:async` keeps async flows simple for the exercise; a broker-backed outbox worker is the next production step.
 - Membership tokens avoid a full user identity system in this slice and keep the RBAC story focused on tenant boundaries.
 - Metrics are exposed in Prometheus format without a dedicated client gem to keep the runtime light.
@@ -193,6 +197,8 @@ bundle install
 bin/rails db:prepare
 bin/rails server
 ```
+
+The default setup expects PostgreSQL on `127.0.0.1:5432` with user `postgres`. Override with `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and database-specific `POSTGRES_*_DB` variables, or use Docker Compose to start the app and database together.
 
 Seed demo data:
 
@@ -227,7 +233,6 @@ Operational guidance is documented in [docs/runbooks/common-issues.md](docs/runb
 
 ## 19. Roadmap
 
-- move persistence to PostgreSQL with stronger concurrent ticket sequencing
 - replace async jobs with a broker-backed outbox worker
 - add inbox SLAs, assignment rules, and webhook subscriptions
 - add billing entities, seat enforcement by subscription, and invoice visibility roles

@@ -15,6 +15,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Product framing | `README.md` describes users, problem, domain model, failure modes, and roadmap | Shows the author can communicate a system as a product, not just code |
 | Tenant isolation | Controllers scope lookups through the current organization and tests cover cross-tenant access | Reduces BOLA risk, a core SaaS backend concern |
 | Authorization | `config/authorization_matrix.yml`, `Security::Authorizer`, and `docs/security/authorization-matrix.md` define role permissions | Makes access control explicit, reviewable, and testable against drift |
+| PostgreSQL consistency | PostgreSQL is the default dev/test/benchmark/CI adapter and concurrency tests cover ticket sequence and quota races | Proves consistency behavior against production-like database semantics |
 | Auditability | Mutating flows write audit logs for organization, membership, and ticket changes | Supports incident review and compliance-style evidence |
 | Async design | `OutboundEvent` persists domain events before async dispatch | Avoids coupling external integrations to the request path |
 | Observability | Structured logs, correlation IDs, health/readiness, metrics, traces, and Grafana JSON exist | Shows operational maturity beyond happy-path implementation |
@@ -29,9 +30,10 @@ That said, seniority is not only about breadth of features. The project also nee
 | Spec compliance was mostly documented but not executable | Medium | Fixed | A senior implementation should turn important repository standards into regression tests where practical |
 | Some integration tests asserted absolute global counts | Medium | Fixed | Tests became order-dependent after seeds or previous data; delta assertions are more robust |
 | Membership and ticket update services did not wrap `save + audit + outbox` in one transaction | High | Fixed | The data-consistency doc promised transaction boundaries, but partial writes could occur if event publication failed |
-| Current persistence uses SQLite | Medium | Accepted trade-off | Suitable for the local challenge, but PostgreSQL is required before claiming production-grade concurrency guarantees |
+| Current persistence uses SQLite | Medium | Fixed | PostgreSQL is now the primary adapter for development, test, benchmark, Docker Compose, and CI; SQLite is explicit fallback only |
 | Outbox dispatch has local retry/backoff but no external broker-backed relay | Medium | Improved | The current model now records processing state, retry delay, and final failure, but production messaging still needs a durable external worker/broker |
 | OpenAPI validation was syntax-only | Medium | Fixed | Representative API responses are now checked against required fields from the OpenAPI contract |
+| Benchmarks required too much manual orchestration | Medium | Fixed | `bin/benchmark` now prepares an isolated DB, starts Puma, waits for readiness, runs k6, captures CPU/RSS, and writes results |
 | Membership tokens have expiry, rotation, and revocation | Medium | Fixed | Digest storage is now paired with token lifecycle controls and audit evidence |
 | Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
 | Authorization permissions lived only in Ruby | Low | Fixed | The RBAC matrix is now a versioned YAML source loaded by the authorizer and checked by tests |
@@ -42,7 +44,7 @@ That said, seniority is not only about breadth of features. The project also nee
 2. Replaced fragile absolute-count integration assertions with `assert_difference` checks around the mutation being exercised.
 3. Wrapped `Memberships::Update` and `Tickets::Update` in database transactions so model update, audit log, and outbox event are committed or rolled back together.
 4. Added transaction-boundary tests that force event publication failure and prove membership/ticket state and audit records roll back.
-5. Added database check constraints, HTTP optimistic-lock preconditions, token lifecycle controls, outbox retry/backoff state, OpenAPI response contract tests, and a reusable benchmark runner.
+5. Added PostgreSQL as the primary adapter, PostgreSQL-backed concurrency tests, database check constraints, HTTP optimistic-lock preconditions, token lifecycle controls, outbox retry/backoff state, OpenAPI response contract tests, and a reusable benchmark runner.
 6. Promoted authorization permissions to `config/authorization_matrix.yml` and added drift tests against the runtime authorizer and membership roles.
 7. Documented this technical validation to separate implemented fixes from remaining production-hardening recommendations.
 
@@ -56,13 +58,13 @@ That said, seniority is not only about breadth of features. The project also nee
 | Testing baseline | Model, integration, authorization, failure, messaging, performance, and transaction tests are present |
 | CI baseline | `.github/workflows/ci.yml` and `config/ci.rb` cover lint, tests, security, OpenAPI, Docker, and coverage artifact upload |
 | Observability baseline | Metrics, tracing, health/readiness endpoints, and Grafana dashboard JSON are present |
-| Performance baseline | k6 scenarios and measured results are committed under `benchmarks/` and `docs/benchmarks/` |
+| Performance baseline | k6 scenarios, an automated benchmark runner, and measured results are committed under `benchmarks/` and `docs/benchmarks/` |
 | Security baseline | Threat model, config-backed authorization matrix, token lifecycle, rate limiting, validation, tenant isolation, and audit logging are documented and tested |
-| Data and transaction baseline | `docs/architecture/data-consistency.md` plus transaction-boundary tests cover the consistency-sensitive flows |
+| Data and transaction baseline | `docs/architecture/data-consistency.md`, PostgreSQL config, and transaction/concurrency tests cover the consistency-sensitive flows |
 | Commit history standard | Conventional Commit history is checked when git metadata is available |
 
 ## Final Assessment
 
 The author shows senior-level capability in system framing, operational discipline, security awareness, and backend architecture. The main technical correction needed was to make implicit promises executable: spec compliance moved into tests, fragile assertions were stabilized, documented transaction boundaries now match the services, and access-control policy now has a single tested source of truth.
 
-The project is strong as a senior challenge submission. The next level would be production hardening: PostgreSQL, a durable broker-backed outbox relay, and stronger integration contracts around outbound consumers.
+The project is strong as a senior challenge submission. The next level would be production hardening around a durable broker-backed outbox relay and stronger integration contracts around outbound consumers.

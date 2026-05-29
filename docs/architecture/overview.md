@@ -19,6 +19,7 @@ SupportNest is organized as a Rails API modular monolith with explicit service b
 - **Auditability**: immutable audit records for sensitive mutations
 - **Async integration**: outbox plus Active Job dispatcher with retry/backoff state
 - **Observability**: JSON logs, readiness, metrics, and traces
+- **Persistence**: PostgreSQL by default, with SQLite only as an explicit local fallback
 
 ## Boundaries
 
