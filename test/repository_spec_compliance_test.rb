@@ -44,6 +44,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/authorization_and_isolation_test.rb
     test/integration/failure_scenarios_test.rb
     test/integration/membership_token_lifecycle_test.rb
+    test/integration/openapi_response_contract_test.rb
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
     test/models/outbound_event_test.rb
@@ -182,6 +183,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     assert_path_exists "benchmarks/baseline.md"
     assert_path_exists "benchmarks/lib/supportnest.js"
     assert_path_exists "benchmarks/results/README.md"
+    assert_path_exists "bin/benchmark"
 
     %w[p50 p95 p99 Throughput Error rate].each do |metric_label|
       assert_includes local_baseline, metric_label

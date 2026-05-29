@@ -131,12 +131,14 @@ The suite covers:
 - database constraint tests for unique indexes
 - job tests for outbound dispatch success and failure modes
 - failure scenario coverage for unsupported event dispatch and rate limiting
+- OpenAPI response contract tests for representative API flows
 
 Run with `bin/rails test`.
 
 ## 12. Performance benchmarks
 
 - benchmark scripts: [`benchmarks/`](benchmarks/)
+- benchmark runner: `bin/benchmark smoke|load|stress|spike`
 - methodology: [docs/benchmarks/methodology.md](docs/benchmarks/methodology.md)
 - baseline definition: [benchmarks/baseline.md](benchmarks/baseline.md)
 - captured results: [docs/benchmarks/local-baseline.md](docs/benchmarks/local-baseline.md)

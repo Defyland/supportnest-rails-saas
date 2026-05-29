@@ -18,7 +18,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Auditability | Mutating flows write audit logs for organization, membership, and ticket changes | Supports incident review and compliance-style evidence |
 | Async design | `OutboundEvent` persists domain events before async dispatch | Avoids coupling external integrations to the request path |
 | Observability | Structured logs, correlation IDs, health/readiness, metrics, traces, and Grafana JSON exist | Shows operational maturity beyond happy-path implementation |
-| Performance evidence | k6 smoke/load/stress/spike results are committed with CPU/RSS notes | Replaces performance claims with measured data |
+| Performance evidence | k6 smoke/load/stress/spike results are committed with CPU/RSS notes and a reusable benchmark runner | Replaces performance claims with measured data |
 | Security baseline | Threat model, token hashing, rate limiting, secret filtering, and security scans are present | Demonstrates attention to practical abuse cases |
 | Delivery hygiene | Conventional Commit history and CI checks are present | Makes the work reviewable and maintainable |
 
@@ -31,6 +31,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Membership and ticket update services did not wrap `save + audit + outbox` in one transaction | High | Fixed | The data-consistency doc promised transaction boundaries, but partial writes could occur if event publication failed |
 | Current persistence uses SQLite | Medium | Accepted trade-off | Suitable for the local challenge, but PostgreSQL is required before claiming production-grade concurrency guarantees |
 | Outbox dispatch has local retry/backoff but no external broker-backed relay | Medium | Improved | The current model now records processing state, retry delay, and final failure, but production messaging still needs a durable external worker/broker |
+| OpenAPI validation was syntax-only | Medium | Fixed | Representative API responses are now checked against required fields from the OpenAPI contract |
 | Membership tokens have expiry, rotation, and revocation | Medium | Fixed | Digest storage is now paired with token lifecycle controls and audit evidence |
 | Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
 

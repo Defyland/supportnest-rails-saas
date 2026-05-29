@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+require "fileutils"
+require "open3"
+require "time"
+
+APP_ROOT = File.expand_path("..", __dir__)
+SCENARIOS = %w[smoke load stress spike].freeze
+DEFAULT_K6 = "/Users/allanflavio/.asdf/installs/golang/1.23.3/packages/bin/k6"
+
+scenario = ARGV.fetch(0, nil)
+
+unless SCENARIOS.include?(scenario)
+  warn "Usage: bin/benchmark #{SCENARIOS.join('|')}"
+  exit 64
+end
+
+base_url = ENV.fetch("BASE_URL", "http://127.0.0.1:3000")
+k6 = ENV.fetch("K6_BIN", DEFAULT_K6)
+results_dir = File.join(APP_ROOT, "benchmarks/results")
+summary_path = File.join(results_dir, "#{scenario}-summary.txt")
+json_path = File.join(results_dir, "#{scenario}-summary.json")
+samples_path = File.join(results_dir, "#{scenario}-resource-samples.tsv")
+
+FileUtils.mkdir_p(results_dir)
+FileUtils.rm_f([ summary_path, json_path, samples_path ])
+
+server_pid = ENV["SERVER_PID"]
+monitor_pid = nil
+
+if server_pid
+  monitor_pid = fork do
+    loop do
+      break unless system("kill", "-0", server_pid, out: File::NULL, err: File::NULL)
+
+      sample, = Open3.capture2("ps", "-p", server_pid, "-o", "%cpu=,rss=")
+      File.open(samples_path, "a") do |file|
+        file.puts("#{Time.now.utc.iso8601}\t#{sample.strip}")
+      end
+      sleep 1
+    end
+  end
+end
+
+command = [
+  k6,
+  "run",
+  "--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99)",
+  "--summary-export",
+  json_path,
+  File.join(APP_ROOT, "benchmarks/#{scenario}.js")
+]
+
+env = { "BASE_URL" => base_url }
+status = nil
+
+File.open(summary_path, "w") do |summary|
+  status = system(env, *command, out: summary, err: summary)
+end
+
+Process.kill("TERM", monitor_pid) if monitor_pid
+Process.wait(monitor_pid) if monitor_pid
+
+exit(status ? 0 : 1)

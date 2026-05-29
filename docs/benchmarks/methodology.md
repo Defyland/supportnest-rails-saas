@@ -32,3 +32,5 @@ Each committed run also:
 - exports trend stats with `med`, `p(95)`, and `p(99)` enabled
 - stores the raw k6 text summary and JSON summary under `benchmarks/results/`
 - samples the Puma process once per second with `ps` to capture `%CPU` and RSS peaks
+
+Use `bin/benchmark smoke`, `bin/benchmark load`, `bin/benchmark stress`, or `bin/benchmark spike` to run the same capture flow. Set `SERVER_PID` to capture process samples for a running Puma process, and set `K6_BIN` if k6 is not installed at the default local path.
