@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+require "json"
+require "optparse"
+
+APP_ROOT = File.expand_path("..", __dir__)
+Dir.chdir(APP_ROOT)
+require_relative "../config/environment"
+
+command = ARGV.shift
+
+def usage!
+  warn <<~USAGE
+    Usage:
+      bin/outbox relay [--once|--loop] [--batch-size N] [--interval SECONDS]
+      bin/outbox dlq [--limit N]
+      bin/outbox replay EVENT_ID [--requested-by NAME] [--dispatch]
+  USAGE
+  exit 64
+end
+
+usage! if command.nil?
+
+case command
+when "relay"
+  options = {
+    batch_size: Integer(ENV.fetch("OUTBOX_RELAY_BATCH_SIZE", OutboundEvents::Relay::DEFAULT_BATCH_SIZE.to_s), 10),
+    interval: Float(ENV.fetch("OUTBOX_RELAY_INTERVAL", "5")),
+    loop: false
+  }
+
+  OptionParser.new do |parser|
+    parser.on("--once") { options[:loop] = false }
+    parser.on("--loop") { options[:loop] = true }
+    parser.on("--batch-size N", Integer) { |value| options[:batch_size] = value }
+    parser.on("--interval SECONDS", Float) { |value| options[:interval] = value }
+  end.parse!(ARGV)
+
+  loop do
+    result = OutboundEvents::Relay.call!(batch_size: options.fetch(:batch_size))
+    puts JSON.generate(result.to_h.merge(processed_at: Time.current.iso8601))
+    break unless options.fetch(:loop)
+
+    sleep options.fetch(:interval)
+  end
+when "dlq"
+  options = { limit: 50 }
+  OptionParser.new do |parser|
+    parser.on("--limit N", Integer) { |value| options[:limit] = value }
+  end.parse!(ARGV)
+
+  OutboundEvent.dead_lettered.limit(options.fetch(:limit)).each do |event|
+    puts JSON.generate(
+      id: event.id,
+      event_type: event.event_type,
+      aggregate_type: event.aggregate_type,
+      aggregate_id: event.aggregate_id,
+      attempts_count: event.attempts_count,
+      failed_at: event.failed_at&.iso8601,
+      dead_letter_reason: event.dead_letter_reason,
+      idempotency_key: event.idempotency_key
+    )
+  end
+when "replay"
+  event_id = ARGV.shift
+  usage! if event_id.blank?
+
+  options = { requested_by: ENV.fetch("USER", "operator"), dispatch: false }
+  OptionParser.new do |parser|
+    parser.on("--requested-by NAME") { |value| options[:requested_by] = value }
+    parser.on("--dispatch") { options[:dispatch] = true }
+  end.parse!(ARGV)
+
+  original_event = OutboundEvent.find(event_id)
+  replay = OutboundEvents::Replay.call!(event: original_event, requested_by: options.fetch(:requested_by))
+  OutboundEventDispatchJob.perform_later(replay.id) if options.fetch(:dispatch)
+  puts JSON.generate(id: replay.id, status: replay.status, replayed_from_outbound_event_id: original_event.id)
+else
+  usage!
+end

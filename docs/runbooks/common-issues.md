@@ -26,7 +26,7 @@
 
 ## `503` on `/ready`
 
-- check the database file path and file permissions
+- check PostgreSQL connectivity and credentials
 - run `bin/rails db:prepare`
 - inspect application logs for migration drift or database corruption
 
@@ -35,4 +35,6 @@
 - inspect the `outbound_events` table for `status = failed`
 - review `last_error` for unsupported or malformed event payloads
 - if the event is `pending` with `next_attempt_at`, retry was scheduled with backoff
-- replay manually by re-enqueueing `OutboundEventDispatchJob`
+- use `bin/outbox dlq` to inspect dead letters
+- replay with `bin/outbox replay <event_id> --requested-by <operator>`
+- follow [outbox-relay.md](outbox-relay.md) for safety rules and replay guidance

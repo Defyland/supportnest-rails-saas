@@ -40,6 +40,8 @@ class OutboundEventDispatchJobTest < ActiveSupport::TestCase
 
     assert_equal "failed", event.reload.status
     assert_match "Unsupported event type", event.last_error
+    assert event.failed_at.present?
+    assert_match "Unsupported event type", event.dead_letter_reason
   end
 
   test "schedules retry with backoff when dispatch delivery fails" do
@@ -93,7 +95,35 @@ class OutboundEventDispatchJobTest < ActiveSupport::TestCase
     assert_equal "failed", event.status
     assert_equal OutboundEventDispatchJob::MAX_ATTEMPTS, event.attempts_count
     assert_nil event.next_attempt_at
+    assert event.failed_at.present?
+    assert_match "temporary outage", event.dead_letter_reason
     assert_match "temporary outage", event.last_error
+  end
+
+  test "does not redispatch dead-lettered events directly" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    event = OutboundEvent.create!(
+      organization: organization,
+      aggregate_type: "Ticket",
+      aggregate_id: 1,
+      event_type: "ticket.created",
+      status: "failed",
+      failed_at: 1.minute.ago,
+      dead_letter_reason: "permanent failure",
+      attempts_count: OutboundEventDispatchJob::MAX_ATTEMPTS,
+      payload: { ticket_id: "TCK-000001" },
+      idempotency_key: "event-dead-lettered",
+      correlation_id: "corr-dead-lettered"
+    )
+    delivered_ids = []
+
+    with_recording_delivery(delivered_ids) do
+      OutboundEventDispatchJob.perform_now(event.id)
+    end
+
+    assert_empty delivered_ids
+    assert_equal "failed", event.reload.status
+    assert_equal "permanent failure", event.dead_letter_reason
   end
 
   private
@@ -101,6 +131,15 @@ class OutboundEventDispatchJobTest < ActiveSupport::TestCase
   def with_failing_delivery
     original_deliver = OutboundEventDispatchJob.method(:deliver)
     OutboundEventDispatchJob.define_singleton_method(:deliver) { |_| raise "temporary outage" }
+
+    yield
+  ensure
+    OutboundEventDispatchJob.define_singleton_method(:deliver, original_deliver)
+  end
+
+  def with_recording_delivery(delivered_ids)
+    original_deliver = OutboundEventDispatchJob.method(:deliver)
+    OutboundEventDispatchJob.define_singleton_method(:deliver) { |event| delivered_ids << event.id }
 
     yield
   ensure

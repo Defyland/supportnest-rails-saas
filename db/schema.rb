@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_012000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -84,21 +84,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_012000) do
     t.integer "attempts_count", default: 0, null: false
     t.string "correlation_id", null: false
     t.datetime "created_at", null: false
+    t.text "dead_letter_reason"
     t.datetime "dispatched_at"
     t.string "event_type", null: false
+    t.datetime "failed_at"
     t.string "idempotency_key", null: false
     t.text "last_error"
     t.datetime "next_attempt_at"
     t.integer "organization_id", null: false
     t.json "payload", default: {}, null: false
     t.datetime "processing_started_at"
+    t.string "relay_worker_id"
+    t.bigint "replayed_from_outbound_event_id"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["idempotency_key"], name: "index_outbound_events_on_idempotency_key", unique: true
     t.index ["organization_id", "status"], name: "index_outbound_events_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_outbound_events_on_organization_id"
+    t.index ["relay_worker_id"], name: "index_outbound_events_on_relay_worker_id"
+    t.index ["replayed_from_outbound_event_id"], name: "index_outbound_events_on_replayed_from_outbound_event_id"
+    t.index ["status", "failed_at"], name: "index_outbound_events_on_status_and_failed_at"
     t.index ["status", "next_attempt_at"], name: "index_outbound_events_on_status_and_next_attempt_at"
     t.check_constraint "attempts_count >= 0", name: "outbound_events_attempts_count_non_negative"
+    t.check_constraint "dead_letter_reason IS NULL OR status::text = 'failed'::text", name: "outbound_events_dead_letter_reason_only_failed"
+    t.check_constraint "failed_at IS NULL OR status::text = 'failed'::text", name: "outbound_events_failed_at_only_failed"
     t.check_constraint "next_attempt_at IS NULL OR status::text = 'pending'::text", name: "outbound_events_next_attempt_only_pending"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'dispatched'::character varying::text, 'failed'::character varying::text])", name: "outbound_events_status_valid"
   end
@@ -137,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_012000) do
   add_foreign_key "audit_logs", "organizations"
   add_foreign_key "memberships", "organizations"
   add_foreign_key "outbound_events", "organizations"
+  add_foreign_key "outbound_events", "outbound_events", column: "replayed_from_outbound_event_id"
   add_foreign_key "tickets", "memberships", column: "assignee_membership_id"
   add_foreign_key "tickets", "memberships", column: "created_by_membership_id"
   add_foreign_key "tickets", "organizations"

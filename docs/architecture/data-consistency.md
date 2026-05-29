@@ -11,7 +11,8 @@
   - write audit log
   - persist outbound event
 - after commit:
-  - enqueue outbound dispatch job
+  - enqueue outbound dispatch job when `OUTBOX_DISPATCH_MODE=active_job`
+  - otherwise leave the persisted event for the dedicated outbox relay
 
 ### Membership creation
 
@@ -46,13 +47,15 @@
 
 ### Outbound dispatch
 
-- boundary: `OutboundEventDispatchJob#perform`
+- boundary: `OutboundEvents::Relay` or `OutboundEventDispatchJob#perform`
 - atomic work:
+  - claim due pending events with `FOR UPDATE SKIP LOCKED` in relay mode
   - move due pending events into `processing`
   - attempt delivery
   - mark success as `dispatched`
   - mark transient failure as `pending` with `next_attempt_at`
-  - mark unsupported or exhausted events as `failed`
+  - mark unsupported or exhausted events as `failed` with dead-letter metadata
+  - replay failed events by creating new pending rows linked through `replayed_from_outbound_event_id`
 
 ## Indexes and constraints
 
@@ -62,6 +65,7 @@
 - `tickets.organization_id + public_id` unique
 - `outbound_events.idempotency_key` unique
 - `outbound_events.status + next_attempt_at` supports due retry polling
+- `outbound_events.status + failed_at` supports dead-letter inspection
 - foreign keys protect all tenant-owned relationships and membership ticket ownership
 
 ## Optimistic locking
@@ -92,4 +96,4 @@
 
 ## Known trade-off
 
-The outbox dispatcher is still local Active Job execution. Production messaging should move to a durable external worker or broker while preserving the same persisted outbox state machine.
+The relay is production-shaped but still process-local. A cloud deployment should supervise multiple relay workers and can replace webhook delivery with SQS, Kafka, RabbitMQ, or Sidekiq while preserving the same persisted outbox state machine.
