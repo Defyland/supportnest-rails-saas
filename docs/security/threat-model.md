@@ -31,7 +31,7 @@ This model covers the current SupportNest slice:
 | Threat | Example | Current mitigation | Residual risk |
 | --- | --- | --- | --- |
 | BOLA / tenant breakout | Tenant A reads `TCK-000001` from tenant B | Controller lookups are scoped through `current_organization` | Medium if future endpoints forget tenant scoping |
-| Token theft | Leaked bearer token grants ticket access | Raw tokens are only shown once, stored as SHA-256 digests, and memberships can be suspended | Medium without rotation and expiry |
+| Token theft | Leaked bearer token grants ticket access | Raw tokens are only shown once, stored as SHA-256 digests, expire after a fixed TTL, and can be rotated or revoked | Medium without device/session-level attribution |
 | Privilege escalation | Viewer creates tickets or edits memberships | `Security::Authorizer` enforces role permissions | Low for current endpoints |
 | Quota abuse | Unlimited tickets or seats exhaust shared resources | Seat and ticket limits are enforced transactionally | Medium because limits are still local-plan fields, not billing-backed |
 | Replay / duplicate side effects | Event dispatch repeats downstream operations | Outbound events store `idempotency_key` and `correlation_id` | Medium until a real broker and downstream consumer contract exist |
@@ -57,7 +57,7 @@ This model covers the current SupportNest slice:
 
 ## Next hardening steps
 
-- token rotation and expiry
+- device/session attribution for token use
 - externalized audit sink
 - PostgreSQL plus row-level or schema-level tenant hardening
 - broker-backed outbox relay with retries and dead-letter handling

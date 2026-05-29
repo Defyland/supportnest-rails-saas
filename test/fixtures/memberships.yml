@@ -8,6 +8,8 @@ one:
   state: MyString
   api_token_digest: MyString
   api_token_last_eight: MyString
+  api_token_expires_at: 2026-08-27 00:00:00
+  api_token_revoked_at:
   last_seen_at: 2026-05-28 20:20:11
 
 two:
@@ -18,4 +20,6 @@ two:
   state: MyString
   api_token_digest: MyString
   api_token_last_eight: MyString
+  api_token_expires_at: 2026-08-27 00:00:00
+  api_token_revoked_at:
   last_seen_at: 2026-05-28 20:20:11

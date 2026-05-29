@@ -15,6 +15,8 @@
 | `memberships_list` | Yes | Yes | Yes | Yes |
 | `memberships_create` | Yes | Yes | No | No |
 | `memberships_update` | Yes | Yes | No | No |
+| `memberships_rotate_token` | Yes | Yes | No | No |
+| `memberships_revoke_token` | Yes | Yes | No | No |
 | `tickets_list` | Yes | Yes | Yes | Yes |
 | `tickets_read` | Yes | Yes | Yes | Yes |
 | `tickets_create` | Yes | Yes | Yes | No |

@@ -6,6 +6,8 @@ module Security
         memberships_list
         memberships_create
         memberships_update
+        memberships_rotate_token
+        memberships_revoke_token
         tickets_list
         tickets_read
         tickets_create
@@ -16,6 +18,8 @@ module Security
         memberships_list
         memberships_create
         memberships_update
+        memberships_rotate_token
+        memberships_revoke_token
         tickets_list
         tickets_read
         tickets_create

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_29_011000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -30,7 +30,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_010000) do
 
   create_table "memberships", force: :cascade do |t|
     t.string "api_token_digest", null: false
+    t.datetime "api_token_expires_at", null: false
     t.string "api_token_last_eight", null: false
+    t.datetime "api_token_revoked_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.string "full_name", null: false
@@ -40,9 +42,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_010000) do
     t.string "state", default: "active", null: false
     t.datetime "updated_at", null: false
     t.index ["api_token_digest"], name: "index_memberships_on_api_token_digest", unique: true
+    t.index ["api_token_expires_at"], name: "index_memberships_on_api_token_expires_at"
     t.index ["organization_id", "email"], name: "index_memberships_on_organization_id_and_email", unique: true
     t.index ["organization_id", "role"], name: "index_memberships_on_organization_id_and_role"
     t.index ["organization_id"], name: "index_memberships_on_organization_id"
+    t.check_constraint "api_token_expires_at > created_at", name: "memberships_api_token_expires_after_creation"
+    t.check_constraint "api_token_revoked_at IS NULL OR api_token_revoked_at >= created_at", name: "memberships_api_token_revoked_after_creation"
     t.check_constraint "length(api_token_last_eight) = 8", name: "memberships_token_last_eight_length"
     t.check_constraint "role IN ('owner', 'admin', 'agent', 'viewer')", name: "memberships_role_valid"
     t.check_constraint "state IN ('active', 'suspended')", name: "memberships_state_valid"

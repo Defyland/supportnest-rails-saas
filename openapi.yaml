@@ -213,6 +213,62 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /v1/memberships/{id}/rotate_token:
+    patch:
+      operationId: rotateMembershipToken
+      tags: [Memberships]
+      summary: Rotate a tenant membership API token
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Token rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/memberships/{id}/revoke_token:
+    patch:
+      operationId: revokeMembershipToken
+      tags: [Memberships]
+      summary: Revoke a tenant membership API token
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [membership]
+                properties:
+                  membership:
+                    $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /v1/tickets:
     get:
       operationId: listTickets
@@ -612,6 +668,12 @@ components:
           enum: [active, suspended]
         api_token_last_eight:
           type: string
+        api_token_expires_at:
+          type: string
+          format: date-time
+        api_token_revoked_at:
+          type: string
+          format: date-time
         last_seen_at:
           type: string
           format: date-time

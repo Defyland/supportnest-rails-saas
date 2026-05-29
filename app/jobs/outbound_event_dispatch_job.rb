@@ -5,6 +5,8 @@ class OutboundEventDispatchJob < ApplicationJob
     organization.bootstrapped
     membership.created
     membership.updated
+    membership.token_revoked
+    membership.token_rotated
     ticket.created
     ticket.updated
   ].freeze

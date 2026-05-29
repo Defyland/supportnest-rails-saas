@@ -101,6 +101,8 @@ Current event types:
 - `organization.bootstrapped`
 - `membership.created`
 - `membership.updated`
+- `membership.token_revoked`
+- `membership.token_rotated`
 - `ticket.created`
 - `ticket.updated`
 
@@ -110,8 +112,9 @@ This keeps the request path fast while making integrations observable and retry-
 
 - tenant-owned tables reference `organization_id`
 - `memberships.api_token_digest` is stored instead of raw token material
+- membership API tokens expire, can be rotated, and can be revoked
 - `tickets.public_id` is tenant-scoped and exposed externally instead of numeric ids
-- `tickets.lock_version` enables optimistic locking for future concurrent update flows
+- `tickets.lock_version` is exposed through `ETag`/`If-Match` for optimistic locking
 - uniqueness and foreign-key constraints backstop application-level validations
 - ticket identifiers are allocated from a tenant sequence inside the ticket creation transaction
 
@@ -150,6 +153,7 @@ Run with `bin/rails test`.
 ## 14. Security considerations
 
 - membership-scoped bearer API tokens stored as SHA-256 digests
+- token expiration, rotation, and revocation for membership API tokens
 - explicit RBAC matrix for `owner`, `admin`, `agent`, and `viewer`
 - tenant isolation enforced in tenant-scoped lookups such as `current_organization.tickets.find_by!(public_id: ...)`
 - in-memory per-token or per-IP rate limiting

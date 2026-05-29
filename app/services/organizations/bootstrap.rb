@@ -14,7 +14,8 @@ module Organizations
             role: "owner",
             state: "active",
             api_token_digest: api_token_digest,
-            api_token_last_eight: api_token.last(8)
+            api_token_last_eight: api_token.last(8),
+            api_token_expires_at: Tokens::Issuer.expires_at
           )
         )
 

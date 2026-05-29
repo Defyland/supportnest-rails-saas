@@ -37,6 +37,26 @@ module V1
       render json: { membership: membership.as_api_json(include_private: true) }
     end
 
+    def rotate_token
+      authorize!(:memberships_rotate_token)
+
+      membership = current_organization.memberships.find(params[:id])
+      result = Memberships::RotateToken.call!(membership: membership, actor: current_membership)
+
+      render json: {
+        membership: result.membership.as_api_json(include_private: true).merge(api_token: result.api_token)
+      }
+    end
+
+    def revoke_token
+      authorize!(:memberships_revoke_token)
+
+      membership = current_organization.memberships.find(params[:id])
+      Memberships::RevokeToken.call!(membership: membership, actor: current_membership)
+
+      render json: { membership: membership.as_api_json(include_private: true) }
+    end
+
     private
 
     def membership_create_attributes

@@ -43,6 +43,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/tickets_flow_test.rb
     test/integration/authorization_and_isolation_test.rb
     test/integration/failure_scenarios_test.rb
+    test/integration/membership_token_lifecycle_test.rb
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
     test/services/mutation_transaction_boundaries_test.rb

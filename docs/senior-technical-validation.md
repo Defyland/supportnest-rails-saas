@@ -31,7 +31,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Membership and ticket update services did not wrap `save + audit + outbox` in one transaction | High | Fixed | The data-consistency doc promised transaction boundaries, but partial writes could occur if event publication failed |
 | Current persistence uses SQLite | Medium | Accepted trade-off | Suitable for the local challenge, but PostgreSQL is required before claiming production-grade concurrency guarantees |
 | Outbox dispatch has no broker-backed relay, retry queue, or dead-letter queue | Medium | Roadmap | The current async model is enough for the slice but not enough for production messaging durability |
-| Membership tokens have no expiry or rotation | Medium | Roadmap | Digest storage is good, but long-lived bearer tokens need lifecycle management in a real SaaS system |
+| Membership tokens have expiry, rotation, and revocation | Medium | Fixed | Digest storage is now paired with token lifecycle controls and audit evidence |
 | Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
 
 ## Changes Executed In This Validation

@@ -21,6 +21,28 @@ class MembershipTest < ActiveSupport::TestCase
     assert_nil Membership.authenticate(raw_token)
   end
 
+  test "does not authenticate expired or revoked tokens" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    raw_token, digest = Tokens::Issuer.issue(prefix: "sn_test_")
+    membership = organization.memberships.create!(
+      email: "owner@acme.test",
+      full_name: "Owner",
+      role: "owner",
+      state: "active",
+      api_token_digest: digest,
+      api_token_last_eight: raw_token.last(8),
+      api_token_expires_at: 1.hour.from_now
+    )
+
+    assert_equal membership, Membership.authenticate(raw_token)
+
+    membership.update_columns(created_at: 2.hours.ago, api_token_expires_at: 1.hour.ago)
+    assert_nil Membership.authenticate(raw_token)
+
+    membership.update!(api_token_expires_at: 1.hour.from_now, api_token_revoked_at: Time.current)
+    assert_nil Membership.authenticate(raw_token)
+  end
+
   test "enforces the unique membership email per organization in the database" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
 
@@ -43,6 +65,7 @@ class MembershipTest < ActiveSupport::TestCase
           state: "active",
           api_token_digest: "digest-2",
           api_token_last_eight: "87654321",
+          api_token_expires_at: 90.days.from_now,
           created_at: Time.current,
           updated_at: Time.current
         }
@@ -63,6 +86,7 @@ class MembershipTest < ActiveSupport::TestCase
           state: "active",
           api_token_digest: "digest-invalid",
           api_token_last_eight: "12345678",
+          api_token_expires_at: 90.days.from_now,
           created_at: Time.current,
           updated_at: Time.current
         }
@@ -83,6 +107,7 @@ class MembershipTest < ActiveSupport::TestCase
           state: "active",
           api_token_digest: "digest-short",
           api_token_last_eight: "short",
+          api_token_expires_at: 90.days.from_now,
           created_at: Time.current,
           updated_at: Time.current
         }

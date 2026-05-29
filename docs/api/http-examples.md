@@ -50,6 +50,22 @@ curl -X POST http://localhost:3000/v1/memberships \
   }'
 ```
 
+## Rotate a membership token
+
+```bash
+curl -X PATCH http://localhost:3000/v1/memberships/2/rotate_token \
+  -H "Authorization: Bearer sn_owner_..." \
+  -H "Content-Type: application/json"
+```
+
+## Revoke a membership token
+
+```bash
+curl -X PATCH http://localhost:3000/v1/memberships/2/revoke_token \
+  -H "Authorization: Bearer sn_owner_..." \
+  -H "Content-Type: application/json"
+```
+
 ## Create a ticket
 
 ```bash

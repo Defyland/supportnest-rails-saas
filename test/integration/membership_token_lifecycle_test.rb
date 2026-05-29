@@ -1,0 +1,92 @@
+require "test_helper"
+
+class MembershipTokenLifecycleTest < ActionDispatch::IntegrationTest
+  test "owner rotates a membership token and the previous token stops authenticating" do
+    bootstrap = bootstrap_organization(slug: unique_slug("token-rotation"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "agent@tenant.test",
+        full_name: "Agent Smith",
+        role: "agent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    membership_id = json_response.dig("membership", "id")
+    previous_token = json_response.dig("membership", "api_token")
+
+    assert_difference [
+      -> { AuditLog.where(action: "membership.token_rotated").count },
+      -> { OutboundEvent.where(event_type: "membership.token_rotated").count }
+    ], +1 do
+      patch "/v1/memberships/#{membership_id}/rotate_token", headers: auth_headers(owner_token), as: :json
+    end
+
+    assert_response :ok
+    rotated_token = json_response.dig("membership", "api_token")
+    assert rotated_token.start_with?("sn_member_")
+    assert_not_equal previous_token, rotated_token
+    assert json_response.dig("membership", "api_token_expires_at").present?
+
+    get "/v1/organization", headers: auth_headers(previous_token)
+    assert_response :unauthorized
+
+    get "/v1/organization", headers: auth_headers(rotated_token)
+    assert_response :ok
+  end
+
+  test "owner revokes a membership token" do
+    bootstrap = bootstrap_organization(slug: unique_slug("token-revocation"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "agent@tenant.test",
+        full_name: "Agent Smith",
+        role: "agent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    membership_id = json_response.dig("membership", "id")
+    agent_token = json_response.dig("membership", "api_token")
+
+    assert_difference [
+      -> { AuditLog.where(action: "membership.token_revoked").count },
+      -> { OutboundEvent.where(event_type: "membership.token_revoked").count }
+    ], +1 do
+      patch "/v1/memberships/#{membership_id}/revoke_token", headers: auth_headers(owner_token), as: :json
+    end
+
+    assert_response :ok
+    assert json_response.dig("membership", "api_token_revoked_at").present?
+
+    get "/v1/organization", headers: auth_headers(agent_token)
+
+    assert_response :unauthorized
+  end
+
+  test "viewer cannot rotate membership tokens" do
+    bootstrap = bootstrap_organization(slug: unique_slug("token-forbidden"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "viewer@tenant.test",
+        full_name: "Read Only",
+        role: "viewer"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    viewer_id = json_response.dig("membership", "id")
+    viewer_token = json_response.dig("membership", "api_token")
+
+    patch "/v1/memberships/#{viewer_id}/rotate_token", headers: auth_headers(viewer_token), as: :json
+
+    assert_response :forbidden
+    assert_equal "forbidden", json_response.dig("error", "code")
+  end
+end
