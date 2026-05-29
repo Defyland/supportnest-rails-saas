@@ -49,4 +49,44 @@ class MembershipTest < ActiveSupport::TestCase
       ])
     end
   end
+
+  test "enforces membership role values at the database layer" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Membership.insert_all!([
+        {
+          organization_id: organization.id,
+          email: "invalid@acme.test",
+          full_name: "Invalid",
+          role: "superuser",
+          state: "active",
+          api_token_digest: "digest-invalid",
+          api_token_last_eight: "12345678",
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      ])
+    end
+  end
+
+  test "enforces token last-eight shape at the database layer" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Membership.insert_all!([
+        {
+          organization_id: organization.id,
+          email: "short-token@acme.test",
+          full_name: "Short Token",
+          role: "agent",
+          state: "active",
+          api_token_digest: "digest-short",
+          api_token_last_eight: "short",
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      ])
+    end
+  end
 end

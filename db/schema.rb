@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_000500) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_29_010000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -43,6 +43,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_000500) do
     t.index ["organization_id", "email"], name: "index_memberships_on_organization_id_and_email", unique: true
     t.index ["organization_id", "role"], name: "index_memberships_on_organization_id_and_role"
     t.index ["organization_id"], name: "index_memberships_on_organization_id"
+    t.check_constraint "length(api_token_last_eight) = 8", name: "memberships_token_last_eight_length"
+    t.check_constraint "role IN ('owner', 'admin', 'agent', 'viewer')", name: "memberships_role_valid"
+    t.check_constraint "state IN ('active', 'suspended')", name: "memberships_state_valid"
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -58,6 +61,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_000500) do
     t.integer "ticket_limit", default: 500, null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_organizations_on_slug", unique: true
+    t.check_constraint "current_month_ticket_count >= 0", name: "organizations_current_month_ticket_count_non_negative"
+    t.check_constraint "inbox_limit > 0", name: "organizations_inbox_limit_positive"
+    t.check_constraint "next_ticket_sequence > 0", name: "organizations_next_ticket_sequence_positive"
+    t.check_constraint "plan IN ('starter', 'growth', 'enterprise')", name: "organizations_plan_valid"
+    t.check_constraint "seat_limit > 0", name: "organizations_seat_limit_positive"
+    t.check_constraint "state IN ('active', 'suspended')", name: "organizations_state_valid"
+    t.check_constraint "ticket_limit > 0", name: "organizations_ticket_limit_positive"
   end
 
   create_table "outbound_events", force: :cascade do |t|
@@ -77,6 +87,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_000500) do
     t.index ["idempotency_key"], name: "index_outbound_events_on_idempotency_key", unique: true
     t.index ["organization_id", "status"], name: "index_outbound_events_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_outbound_events_on_organization_id"
+    t.check_constraint "attempts_count >= 0", name: "outbound_events_attempts_count_non_negative"
+    t.check_constraint "status IN ('pending', 'dispatched', 'failed')", name: "outbound_events_status_valid"
   end
 
   create_table "tickets", force: :cascade do |t|
@@ -103,6 +115,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_000500) do
     t.index ["organization_id", "requester_email"], name: "index_tickets_on_organization_id_and_requester_email"
     t.index ["organization_id", "status"], name: "index_tickets_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_tickets_on_organization_id"
+    t.check_constraint "length(public_id) > 0", name: "tickets_public_id_present"
+    t.check_constraint "lock_version >= 0", name: "tickets_lock_version_non_negative"
+    t.check_constraint "priority IN ('low', 'normal', 'high', 'urgent')", name: "tickets_priority_valid"
+    t.check_constraint "status IN ('open', 'pending', 'resolved', 'closed')", name: "tickets_status_valid"
   end
 
   add_foreign_key "audit_logs", "memberships"

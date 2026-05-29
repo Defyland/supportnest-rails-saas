@@ -65,4 +65,69 @@ class TicketTest < ActiveSupport::TestCase
     assert_not ticket.valid?
     assert_includes ticket.errors[:assignee_membership], "must belong to the same organization"
   end
+
+  test "enforces ticket status values at the database layer" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    owner = create_membership(organization: organization)
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Ticket.insert_all!([
+        {
+          organization_id: organization.id,
+          created_by_membership_id: owner.id,
+          public_id: "TCK-999999",
+          subject: "Invalid status",
+          description: "Should fail",
+          requester_name: "Jamie Customer",
+          requester_email: "jamie@example.com",
+          inbox: "general",
+          status: "triaged",
+          priority: "normal",
+          lock_version: 0,
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      ])
+    end
+  end
+
+  test "enforces non-negative lock version at the database layer" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    owner = create_membership(organization: organization)
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Ticket.insert_all!([
+        {
+          organization_id: organization.id,
+          created_by_membership_id: owner.id,
+          public_id: "TCK-999998",
+          subject: "Invalid lock version",
+          description: "Should fail",
+          requester_name: "Jamie Customer",
+          requester_email: "jamie@example.com",
+          inbox: "general",
+          status: "open",
+          priority: "normal",
+          lock_version: -1,
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      ])
+    end
+  end
+
+  private
+
+  def create_membership(organization:)
+    raw_token, digest = Tokens::Issuer.issue(prefix: "sn_test_")
+
+    organization.memberships.create!(
+      email: "owner-#{SecureRandom.hex(4)}@acme.test",
+      full_name: "Owner",
+      role: "owner",
+      state: "active",
+      api_token_digest: digest,
+      api_token_last_eight: raw_token.last(8)
+    )
+  end
 end
