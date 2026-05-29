@@ -71,7 +71,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     "docker compose -f docker-compose.prod-like.yml config",
     "postgres:16",
     "docker build -t supportnest-ci .",
-    "actions/upload-artifact@v5"
+    "actions/upload-artifact@v7"
   ].freeze
   REQUIRED_LOCAL_CI_CHECKS = [
     "bin/rubocop",
