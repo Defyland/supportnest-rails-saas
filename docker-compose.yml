@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    command: bundle exec rails server -b 0.0.0.0 -p 3000
+    environment:
+      RAILS_ENV: development
+      SECRET_KEY_BASE: local-development-secret
+      DATABASE_PATH: storage/development.sqlite3
+      RATE_LIMIT_REQUESTS_PER_MINUTE: 120
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+      - supportnest_storage:/app/storage
+
+volumes:
+  bundle_cache:
+  supportnest_storage:
