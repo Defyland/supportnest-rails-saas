@@ -31,6 +31,8 @@
 
 ## Code references
 
-- permission map: `app/services/security/authorizer.rb`
+- permission source of truth: `config/authorization_matrix.yml`
+- permission loader/enforcement: `app/services/security/authorizer.rb`
 - controller enforcement: `app/controllers/application_controller.rb`
 - membership mutation safeguards: `app/services/memberships/update.rb`
+- drift guard: `test/services/security_authorizer_test.rb`

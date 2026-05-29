@@ -1,0 +1,35 @@
+roles:
+  owner:
+    - organizations_read
+    - memberships_list
+    - memberships_create
+    - memberships_update
+    - memberships_rotate_token
+    - memberships_revoke_token
+    - tickets_list
+    - tickets_read
+    - tickets_create
+    - tickets_update
+  admin:
+    - organizations_read
+    - memberships_list
+    - memberships_create
+    - memberships_update
+    - memberships_rotate_token
+    - memberships_revoke_token
+    - tickets_list
+    - tickets_read
+    - tickets_create
+    - tickets_update
+  agent:
+    - organizations_read
+    - memberships_list
+    - tickets_list
+    - tickets_read
+    - tickets_create
+    - tickets_update
+  viewer:
+    - organizations_read
+    - memberships_list
+    - tickets_list
+    - tickets_read

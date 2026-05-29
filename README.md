@@ -157,7 +157,7 @@ Run with `bin/rails test`.
 
 - membership-scoped bearer API tokens stored as SHA-256 digests
 - token expiration, rotation, and revocation for membership API tokens
-- explicit RBAC matrix for `owner`, `admin`, `agent`, and `viewer`
+- config-backed RBAC matrix for `owner`, `admin`, `agent`, and `viewer`
 - tenant isolation enforced in tenant-scoped lookups such as `current_organization.tickets.find_by!(public_id: ...)`
 - in-memory per-token or per-IP rate limiting
 - sensitive parameters filtered from logs
@@ -168,6 +168,7 @@ Security references:
 
 - threat model: [docs/security/threat-model.md](docs/security/threat-model.md)
 - authorization matrix: [docs/security/authorization-matrix.md](docs/security/authorization-matrix.md)
+- authorization source of truth: `config/authorization_matrix.yml`
 
 | Role | Org read | Membership list | Membership create/update | Ticket read | Ticket create/update |
 | --- | --- | --- | --- | --- | --- |

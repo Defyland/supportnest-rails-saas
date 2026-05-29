@@ -1,45 +1,11 @@
+require "yaml"
+
 module Security
   class Authorizer
-    PERMISSIONS = {
-      owner: %i[
-        organizations_read
-        memberships_list
-        memberships_create
-        memberships_update
-        memberships_rotate_token
-        memberships_revoke_token
-        tickets_list
-        tickets_read
-        tickets_create
-        tickets_update
-      ],
-      admin: %i[
-        organizations_read
-        memberships_list
-        memberships_create
-        memberships_update
-        memberships_rotate_token
-        memberships_revoke_token
-        tickets_list
-        tickets_read
-        tickets_create
-        tickets_update
-      ],
-      agent: %i[
-        organizations_read
-        memberships_list
-        tickets_list
-        tickets_read
-        tickets_create
-        tickets_update
-      ],
-      viewer: %i[
-        organizations_read
-        memberships_list
-        tickets_list
-        tickets_read
-      ]
-    }.freeze
+    MATRIX_PATH = Rails.root.join("config/authorization_matrix.yml")
+    PERMISSIONS = YAML.safe_load_file(MATRIX_PATH).fetch("roles").to_h do |role, permissions|
+      [ role.to_sym, permissions.map(&:to_sym).freeze ]
+    end.freeze
 
     def self.authorize!(membership, permission)
       allowed_permissions = PERMISSIONS.fetch(membership.role.to_sym)

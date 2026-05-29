@@ -4,7 +4,7 @@ This document evaluates the SupportNest implementation as evidence of senior bac
 
 ## Verdict
 
-The project demonstrates senior-level execution for a Rails API challenge. The strongest signals are the deliberate product narrative, explicit tenant-boundary modeling, RBAC, auditability, outbox-style event persistence, operational documentation, benchmark evidence, and CI/security automation.
+The project demonstrates senior-level execution for a Rails API challenge. The strongest signals are the deliberate product narrative, explicit tenant-boundary modeling, config-backed RBAC, auditability, outbox-style event persistence, operational documentation, benchmark evidence, and CI/security automation.
 
 That said, seniority is not only about breadth of features. The project also needed tighter executable guardrails around the written spec and stricter alignment between documented transaction boundaries and service implementation. Those gaps were addressed in this validation pass.
 
@@ -14,7 +14,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | --- | --- | --- |
 | Product framing | `README.md` describes users, problem, domain model, failure modes, and roadmap | Shows the author can communicate a system as a product, not just code |
 | Tenant isolation | Controllers scope lookups through the current organization and tests cover cross-tenant access | Reduces BOLA risk, a core SaaS backend concern |
-| Authorization | `Security::Authorizer` plus `docs/security/authorization-matrix.md` define role permissions | Makes access control explicit and reviewable |
+| Authorization | `config/authorization_matrix.yml`, `Security::Authorizer`, and `docs/security/authorization-matrix.md` define role permissions | Makes access control explicit, reviewable, and testable against drift |
 | Auditability | Mutating flows write audit logs for organization, membership, and ticket changes | Supports incident review and compliance-style evidence |
 | Async design | `OutboundEvent` persists domain events before async dispatch | Avoids coupling external integrations to the request path |
 | Observability | Structured logs, correlation IDs, health/readiness, metrics, traces, and Grafana JSON exist | Shows operational maturity beyond happy-path implementation |
@@ -34,6 +34,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | OpenAPI validation was syntax-only | Medium | Fixed | Representative API responses are now checked against required fields from the OpenAPI contract |
 | Membership tokens have expiry, rotation, and revocation | Medium | Fixed | Digest storage is now paired with token lifecycle controls and audit evidence |
 | Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
+| Authorization permissions lived only in Ruby | Low | Fixed | The RBAC matrix is now a versioned YAML source loaded by the authorizer and checked by tests |
 
 ## Changes Executed In This Validation
 
@@ -41,7 +42,9 @@ That said, seniority is not only about breadth of features. The project also nee
 2. Replaced fragile absolute-count integration assertions with `assert_difference` checks around the mutation being exercised.
 3. Wrapped `Memberships::Update` and `Tickets::Update` in database transactions so model update, audit log, and outbox event are committed or rolled back together.
 4. Added transaction-boundary tests that force event publication failure and prove membership/ticket state and audit records roll back.
-5. Documented this technical validation to separate implemented fixes from remaining production-hardening recommendations.
+5. Added database check constraints, HTTP optimistic-lock preconditions, token lifecycle controls, outbox retry/backoff state, OpenAPI response contract tests, and a reusable benchmark runner.
+6. Promoted authorization permissions to `config/authorization_matrix.yml` and added drift tests against the runtime authorizer and membership roles.
+7. Documented this technical validation to separate implemented fixes from remaining production-hardening recommendations.
 
 ## Spec-Driven Evidence
 
@@ -54,12 +57,12 @@ That said, seniority is not only about breadth of features. The project also nee
 | CI baseline | `.github/workflows/ci.yml` and `config/ci.rb` cover lint, tests, security, OpenAPI, Docker, and coverage artifact upload |
 | Observability baseline | Metrics, tracing, health/readiness endpoints, and Grafana dashboard JSON are present |
 | Performance baseline | k6 scenarios and measured results are committed under `benchmarks/` and `docs/benchmarks/` |
-| Security baseline | Threat model, authorization matrix, token strategy, rate limiting, validation, tenant isolation, and audit logging are documented and tested |
+| Security baseline | Threat model, config-backed authorization matrix, token lifecycle, rate limiting, validation, tenant isolation, and audit logging are documented and tested |
 | Data and transaction baseline | `docs/architecture/data-consistency.md` plus transaction-boundary tests cover the consistency-sensitive flows |
 | Commit history standard | Conventional Commit history is checked when git metadata is available |
 
 ## Final Assessment
 
-The author shows senior-level capability in system framing, operational discipline, security awareness, and backend architecture. The main technical correction needed was to make implicit promises executable: spec compliance moved into tests, fragile assertions were stabilized, and documented transaction boundaries now match the services.
+The author shows senior-level capability in system framing, operational discipline, security awareness, and backend architecture. The main technical correction needed was to make implicit promises executable: spec compliance moved into tests, fragile assertions were stabilized, documented transaction boundaries now match the services, and access-control policy now has a single tested source of truth.
 
-The project is strong as a senior challenge submission. The next level would be production hardening: PostgreSQL, a durable broker-backed outbox relay, token lifecycle management, HTTP optimistic-lock preconditions, and stronger integration contracts around outbound consumers.
+The project is strong as a senior challenge submission. The next level would be production hardening: PostgreSQL, a durable broker-backed outbox relay, and stronger integration contracts around outbound consumers.

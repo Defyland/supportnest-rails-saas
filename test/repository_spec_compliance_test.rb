@@ -49,6 +49,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/jobs/outbound_event_dispatch_job_test.rb
     test/models/outbound_event_test.rb
     test/services/mutation_transaction_boundaries_test.rb
+    test/services/security_authorizer_test.rb
   ].freeze
 
   REQUIRED_CI_CHECKS = [
@@ -73,6 +74,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     %w[
       README.md
       openapi.yaml
+      config/authorization_matrix.yml
       docs/api/http-examples.md
       docs/api/error-format.md
       docs/benchmarks/methodology.md
