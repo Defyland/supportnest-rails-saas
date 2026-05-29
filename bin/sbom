@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+require "bundler"
+require "fileutils"
+require "json"
+require "optparse"
+require "securerandom"
+require "time"
+
+APP_ROOT = File.expand_path("..", __dir__)
+options = { output: "tmp/sbom-gems.cdx.json" }
+
+OptionParser.new do |parser|
+  parser.on("--output PATH") { |value| options[:output] = value }
+end.parse!(ARGV)
+
+lockfile = Bundler::LockfileParser.new(File.read(File.join(APP_ROOT, "Gemfile.lock")))
+components = lockfile.specs.sort_by(&:name).map do |spec|
+  purl = "pkg:gem/#{spec.name}@#{spec.version}"
+
+  {
+    "type" => "library",
+    "bom-ref" => purl,
+    "name" => spec.name,
+    "version" => spec.version.to_s,
+    "purl" => purl
+  }
+end
+
+sbom = {
+  "bomFormat" => "CycloneDX",
+  "specVersion" => "1.5",
+  "serialNumber" => "urn:uuid:#{SecureRandom.uuid}",
+  "version" => 1,
+  "metadata" => {
+    "timestamp" => Time.now.utc.iso8601,
+    "tools" => [
+      {
+        "vendor" => "SupportNest",
+        "name" => "bin/sbom",
+        "version" => "1"
+      }
+    ],
+    "component" => {
+      "type" => "application",
+      "name" => "supportnest-rails-saas"
+    }
+  },
+  "components" => components
+}
+
+output_path = File.expand_path(options.fetch(:output), APP_ROOT)
+FileUtils.mkdir_p(File.dirname(output_path))
+File.write(output_path, JSON.pretty_generate(sbom))
+puts output_path

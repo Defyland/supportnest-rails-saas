@@ -1,0 +1,94 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: supportnest
+      POSTGRES_PASSWORD: supportnest
+      POSTGRES_DB: supportnest_production_like
+    ports:
+      - "5432:5432"
+    volumes:
+      - supportnest_prod_like_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportnest -d supportnest_production_like"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    command: bundle exec puma -C config/puma.rb
+    environment: &app_environment
+      RAILS_ENV: production
+      SECRET_KEY_BASE: production-like-secret-change-me
+      POSTGRES_HOST: db
+      POSTGRES_USER: supportnest
+      POSTGRES_PASSWORD: supportnest
+      POSTGRES_PRODUCTION_DB: supportnest_production_like
+      OUTBOX_DISPATCH_MODE: relay
+      OUTBOUND_WEBHOOK_SECRET: production-like-outbound-secret-change-me
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      RATE_LIMIT_REQUESTS_PER_MINUTE: 120
+      RAILS_LOG_TO_STDOUT: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  outbox-relay:
+    build: .
+    command: bundle exec ruby bin/outbox relay --loop --batch-size 50 --interval 2
+    environment:
+      <<: *app_environment
+      OUTBOX_RELAY_BATCH_SIZE: 50
+      OUTBOX_RELAY_INTERVAL: 2
+    depends_on:
+      app:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/alerts:/etc/prometheus/alerts:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      app:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docs/diagrams/grafana-supportnest-overview.json:/var/lib/grafana/dashboards/supportnest-overview.json:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    volumes:
+      - ./ops/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+volumes:
+  supportnest_prod_like_postgres:

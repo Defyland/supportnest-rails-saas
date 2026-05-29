@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+image = ARGV.fetch(0, "supportnest-ci")
+severity = ENV.fetch("TRIVY_SEVERITY", "HIGH,CRITICAL")
+exit_code = ENV.fetch("TRIVY_EXIT_CODE", "1")
+trivy = ENV["TRIVY_BIN"].to_s
+
+trivy = `command -v trivy`.strip if trivy.empty?
+
+if trivy.empty?
+  warn "trivy is required for container scanning. Install it or set TRIVY_BIN."
+  exit 69
+end
+
+exec(
+  trivy,
+  "image",
+  "--ignore-unfixed",
+  "--severity", severity,
+  "--exit-code", exit_code,
+  image
+)

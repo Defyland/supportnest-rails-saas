@@ -7,6 +7,9 @@ flowchart LR
   API --> Metrics["/metrics endpoint"]
   API --> Health["/up and /ready endpoints"]
   API --> Outbox["outbound_events table"]
-  Outbox --> Job["OutboundEventDispatchJob"]
-  Job --> Downstream["Future webhook or broker consumer"]
+  Outbox --> Relay["Outbox relay worker"]
+  Relay --> Downstream["Signed webhook or future broker consumer"]
+  Metrics --> Prometheus["Prometheus"]
+  API --> OTel["OTLP collector"]
+  Prometheus --> Grafana["Grafana"]
 ```

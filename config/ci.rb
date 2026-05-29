@@ -6,8 +6,11 @@ CI.run do
   step "Style: Ruby", "bin/rubocop"
 
   step "Security: Gem audit", "bundle exec bundler-audit check --update"
+  step "Security: SBOM", "bin/sbom --output tmp/sbom-gems.cdx.json"
   step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"
   step "Contract: OpenAPI", "npx @redocly/cli@latest lint openapi.yaml"
+  step "Ops: Production-like Compose", "docker compose -f docker-compose.prod-like.yml config >/tmp/supportnest-compose.yml"
+  step "Container: Docker build", "docker build -t supportnest-ci ."
   step "Tests: Rails", "env RAILS_ENV=test bin/rails db:drop db:create db:migrate test"
   step "Tests: Seeds", "env RAILS_ENV=test bin/rails db:seed:replant"
 

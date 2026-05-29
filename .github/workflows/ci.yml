@@ -13,6 +13,7 @@ jobs:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_TEST_DB: supportnest_test
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     services:
       postgres:
         image: postgres:16
@@ -51,6 +52,9 @@ jobs:
       - name: Security audit
         run: bundle exec bundler-audit check --update
 
+      - name: Generate SBOM
+        run: bin/sbom --output tmp/sbom-gems.cdx.json
+
       - name: Brakeman
         run: bundle exec brakeman --quiet --no-pager --exit-on-warn --exit-on-error
 
@@ -60,12 +64,17 @@ jobs:
       - name: Validate OpenAPI
         run: npx @redocly/cli@latest lint openapi.yaml
 
+      - name: Validate production-like Compose
+        run: docker compose -f docker-compose.prod-like.yml config >/tmp/supportnest-compose.yml
+
       - name: Validate Docker build
         run: docker build -t supportnest-ci .
 
-      - name: Upload coverage
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
-          path: coverage
+          name: ci-artifacts
+          path: |
+            coverage
+            tmp/sbom-gems.cdx.json

@@ -13,7 +13,9 @@ Dir[Rails.root.join("test/support/**/*.rb")].sort.each { |file| require file }
 
 module ActiveSupport
   class TestCase
-    parallelize(workers: :number_of_processors)
+    # Concurrency behavior is tested explicitly with threads against PostgreSQL.
+    # Keep the default suite serial to avoid process-level test database contention.
+    parallelize(workers: Integer(ENV.fetch("RAILS_TEST_WORKERS", "1"), 10))
     include ActiveJob::TestHelper
 
     setup do

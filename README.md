@@ -40,7 +40,7 @@ Many support tools are easy to demo but weak on multi-tenancy boundaries, operat
 - `POST /v1/tickets` creates tickets with quota enforcement and priority-based response deadlines
 - `PATCH /v1/tickets/:id` updates status, inbox, priority, and assignee
 - audit log records are created for bootstrap, membership, and ticket mutations
-- outbound events are persisted and dispatched asynchronously via `OutboundEventDispatchJob`
+- outbound events are persisted and dispatched asynchronously via Active Job or the dedicated outbox relay
 - `/up`, `/ready`, and `/metrics` expose platform health and telemetry surfaces
 
 ## 5. Architecture overview
@@ -50,7 +50,7 @@ SupportNest is implemented as a modular monolith with explicit application servi
 - controllers handle transport concerns, authentication, authorization, and standardized errors
 - services implement bootstrap, membership management, ticket workflows, audit logging, and event publication
 - Active Record models carry validations, relationships, and local invariants
-- an outbox-style `outbound_events` table decouples write paths from async delivery
+- an outbox-style `outbound_events` table plus relay decouples write paths from async delivery
 - middleware attaches request context and collects Prometheus-style HTTP metrics
 
 See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/diagrams/container.md](docs/diagrams/container.md).
@@ -66,8 +66,9 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/dia
 - OpenTelemetry SDK and Rails instrumentation
 - JSON structured logging
 - Prometheus-style plaintext metrics endpoint
+- prod-like Compose stack with app, outbox relay, PostgreSQL, OTLP collector, Prometheus, and Grafana
 - Minitest with integration, model, and job coverage
-- Docker and Docker Compose
+- Docker image running as a non-root `rails` user plus Docker Compose
 - k6 benchmark scripts committed under `benchmarks/`
 
 ## 7. Domain model
@@ -78,7 +79,7 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/dia
 | `Membership` | Authenticated actor inside a tenant | unique `[organization_id, email]`, unique token digest |
 | `Ticket` | Support request lifecycle | unique `[organization_id, public_id]`, optimistic lock column |
 | `AuditLog` | Immutable action evidence | polymorphic auditable reference |
-| `OutboundEvent` | Async integration buffer | unique `idempotency_key`, retry/backoff state |
+| `OutboundEvent` | Async integration buffer | unique `idempotency_key`, retry/backoff state, dead-letter metadata, replay lineage |
 
 ## 8. API documentation
 
@@ -94,9 +95,11 @@ Write-path mutations publish domain events through an outbox flow:
 
 1. the mutation is committed in the primary transaction
 2. an `OutboundEvent` record is stored with correlation metadata
-3. `OutboundEventDispatchJob` is enqueued after commit
-4. the dispatcher marks the event as `processing`, then `dispatched`, or schedules retry with exponential backoff
-5. events that exceed the retry budget are marked `failed`
+3. in Active Job mode, `OutboundEventDispatchJob` is enqueued after commit
+4. in relay mode, `bin/outbox relay --loop` claims due rows with PostgreSQL `FOR UPDATE SKIP LOCKED`
+5. the dispatcher marks the event as `processing`, then `dispatched`, or schedules retry with exponential backoff
+6. events that exceed the retry budget are marked `failed` with dead-letter metadata
+7. operators can inspect `bin/outbox dlq` and replay through `bin/outbox replay <event_id>`
 
 Current event types:
 
@@ -108,7 +111,7 @@ Current event types:
 - `ticket.created`
 - `ticket.updated`
 
-This keeps the request path fast while making integrations observable and retry-friendly.
+Webhook delivery includes HMAC signature headers, idempotency keys, and explicit network timeouts. This keeps the request path fast while making integrations observable, retry-friendly, and operationally replayable.
 
 ## 10. Database design
 
@@ -132,6 +135,7 @@ The suite covers:
 - authorization tests for forbidden viewer actions
 - database constraint tests for unique indexes
 - PostgreSQL concurrency tests for tenant ticket sequence allocation and quota exhaustion
+- outbox relay concurrency tests for `FOR UPDATE SKIP LOCKED`, dead-letter, replay, and HMAC webhook signing
 - job tests for outbound dispatch success and failure modes
 - failure scenario coverage for unsupported event dispatch and rate limiting
 - OpenAPI response contract tests for representative API flows
@@ -152,9 +156,11 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 
 - JSON structured logs via `JsonLogFormatter`
 - request-scoped `request_id` and `correlation_id`
+- OpenTelemetry instrumentation with optional OTLP export through `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `/up` liveness probe
 - `/ready` readiness probe with database check
 - `/metrics` plaintext Prometheus endpoint
+- prod-like Prometheus alerts and Grafana provisioning under `ops/`
 - Grafana dashboard definition: [docs/diagrams/grafana-supportnest-overview.json](docs/diagrams/grafana-supportnest-overview.json)
 
 ## 14. Security considerations
@@ -166,7 +172,8 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 - in-memory per-token or per-IP rate limiting
 - sensitive parameters filtered from logs
 - audit logs on bootstrap, membership changes, and ticket lifecycle changes
-- self-contained local secrets through environment variables
+- secrets supplied through environment variables at runtime rather than baked into the Docker image
+- Docker runtime runs the Rails process as a non-root user
 
 Security references:
 
@@ -184,9 +191,11 @@ Security references:
 ## 15. Trade-offs and decisions
 
 - PostgreSQL is the primary runtime database; SQLite remains only as an explicit local fallback via `DATABASE_ADAPTER=sqlite3`.
-- Active Job `:async` keeps async flows simple for the exercise; a broker-backed outbox worker is the next production step.
+- Active Job remains available for simple local dispatch; production-style mode uses a dedicated outbox relay via `OUTBOX_DISPATCH_MODE=relay`.
 - Membership tokens avoid a full user identity system in this slice and keep the RBAC story focused on tenant boundaries.
 - Metrics are exposed in Prometheus format without a dedicated client gem to keep the runtime light.
+- Container scanning is exposed through `bin/container-scan` and expects Trivy in the operator environment.
+- The Docker image does not bake `SECRET_KEY_BASE`; production-like Compose injects runtime env vars and real deployments should use a secrets manager.
 
 See the ADRs in [docs/adr/](docs/adr/).
 
@@ -208,15 +217,24 @@ bin/rails db:seed
 
 Default local URL: `http://localhost:3000`
 
+Production-like local stack:
+
+```bash
+docker compose -f docker-compose.prod-like.yml up --build
+```
+
 ## 17. How to run tests
 
 ```bash
 bin/rails test
 bin/rubocop
+bin/ci
 bundle exec brakeman --quiet --no-pager --exit-on-warn --exit-on-error
 bundle exec bundler-audit check --update
 npx @redocly/cli@latest lint openapi.yaml
-docker build -t supportnest .
+docker compose -f docker-compose.prod-like.yml config
+docker build -t supportnest-ci .
+bin/sbom --output tmp/sbom-gems.cdx.json
 ```
 
 ## 18. Failure scenarios
@@ -227,14 +245,16 @@ docker build -t supportnest .
 - forbidden role action returns `403`
 - cross-tenant ticket lookup returns `404`
 - unsupported outbound event dispatch marks the event as `failed`
+- exhausted outbound delivery moves the event to dead letter with replay lineage
 - readiness returns `503` if the database probe fails
 
 Operational guidance is documented in [docs/runbooks/common-issues.md](docs/runbooks/common-issues.md).
+Production-readiness evidence is summarized in [docs/production-readiness.md](docs/production-readiness.md).
 
 ## 19. Roadmap
 
-- replace async jobs with a broker-backed outbox worker
+- add an external broker adapter for the outbox relay when signed webhook delivery is not sufficient
 - add inbox SLAs, assignment rules, and webhook subscriptions
 - add billing entities, seat enforcement by subscription, and invoice visibility roles
 - expose audit log and outbound event APIs
-- add OTLP collector container and production dashboards beyond the local baseline
+- add managed alert routing and production dashboards beyond the local baseline

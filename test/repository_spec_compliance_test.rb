@@ -33,6 +33,9 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     docs/api
     docs/diagrams
     docs/runbooks
+    ops/alerts
+    ops/grafana/provisioning/dashboards
+    ops/grafana/provisioning/datasources
   ].freeze
 
   REQUIRED_TEST_FILES = %w[
@@ -48,6 +51,9 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
     test/models/outbound_event_test.rb
+    test/services/events_publisher_test.rb
+    test/services/outbound_events_relay_test.rb
+    test/services/outbound_events_webhook_delivery_test.rb
     test/services/mutation_transaction_boundaries_test.rb
     test/services/security_authorizer_test.rb
     test/services/ticket_concurrency_test.rb
@@ -55,13 +61,26 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
 
   REQUIRED_CI_CHECKS = [
     "bin/rubocop",
+    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
     "bundle exec bundler-audit check --update",
+    "bin/sbom --output tmp/sbom-gems.cdx.json",
     "bundle exec brakeman --quiet --no-pager --exit-on-warn --exit-on-error",
     "bin/rails test",
     "npx @redocly/cli@latest lint openapi.yaml",
+    "docker compose -f docker-compose.prod-like.yml config",
     "postgres:16",
     "docker build -t supportnest-ci .",
     "actions/upload-artifact@v4"
+  ].freeze
+  REQUIRED_LOCAL_CI_CHECKS = [
+    "bin/rubocop",
+    "bundle exec bundler-audit check --update",
+    "bin/sbom --output tmp/sbom-gems.cdx.json",
+    "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error",
+    "npx @redocly/cli@latest lint openapi.yaml",
+    "docker compose -f docker-compose.prod-like.yml config",
+    "docker build -t supportnest-ci .",
+    "bin/rails db:drop db:create db:migrate test"
   ].freeze
 
   REQUIRED_COMMIT_PATTERN = /\A(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?: .+\z/
@@ -75,15 +94,30 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
 
     %w[
       README.md
+      Dockerfile
       openapi.yaml
+      config/ci.rb
       db/schema.sqlite.rb
       config/authorization_matrix.yml
+      bin/outbox
+      bin/sbom
+      bin/container-scan
+      docker-compose.prod-like.yml
+      ops/prometheus.yml
+      ops/otel-collector.yml
+      ops/alerts/supportnest.yml
+      ops/grafana/provisioning/dashboards/supportnest.yml
+      ops/grafana/provisioning/datasources/prometheus.yml
+      docs/production-readiness.md
       docs/api/http-examples.md
       docs/api/error-format.md
       docs/benchmarks/methodology.md
       docs/benchmarks/local-baseline.md
       docs/adr/003-postgresql-primary.md
+      docs/adr/004-production-outbox-relay.md
       docs/runbooks/common-issues.md
+      docs/runbooks/outbox-relay.md
+      docs/runbooks/disaster-recovery.md
     ].each do |path|
       assert_path_exists path
     end
@@ -148,6 +182,14 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     end
   end
 
+  test "keeps the local CI runner aligned with the production readiness checks" do
+    local_ci = read_file("config/ci.rb")
+
+    REQUIRED_LOCAL_CI_CHECKS.each do |check|
+      assert_includes local_ci, check
+    end
+  end
+
   test "keeps PostgreSQL as the primary verified database with explicit SQLite fallback" do
     database_config = read_file("config/database.yml")
     docker_compose = read_file("docker-compose.yml")
@@ -167,6 +209,10 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     authorization_matrix = read_file("docs/security/authorization-matrix.md")
     data_consistency = read_file("docs/architecture/data-consistency.md")
     grafana_dashboard = JSON.parse(read_file("docs/diagrams/grafana-supportnest-overview.json"))
+    production_readiness = read_file("docs/production-readiness.md")
+    prod_like_compose = read_file("docker-compose.prod-like.yml")
+    dockerfile = read_file("Dockerfile")
+    prometheus_alerts = read_file("ops/alerts/supportnest.yml")
 
     [ "Scope", "Trust boundaries", "Primary threats", "Tests mapped to threats" ].each do |phrase|
       assert_includes threat_model, phrase
@@ -182,9 +228,26 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       "Optimistic locking",
       "Isolation assumptions",
       "Migration strategy",
-      "Rollback strategy"
+      "Rollback strategy",
+      "FOR UPDATE SKIP LOCKED",
+      "dead-letter"
     ].each do |heading|
       assert_includes data_consistency, heading
+    end
+
+    %w[outbox-relay prometheus grafana otel-collector OUTBOX_DISPATCH_MODE].each do |term|
+      assert_includes prod_like_compose, term
+    end
+
+    assert_includes dockerfile, "USER rails:rails"
+    assert_includes dockerfile, "RAILS_LOG_TO_STDOUT=1"
+
+    %w[SupportNestReadinessDown SupportNestHighServerErrorRate SupportNestOutboundDeadLetters].each do |alert|
+      assert_includes prometheus_alerts, alert
+    end
+
+    %w[Outbox Operations Security Backups].each do |term|
+      assert_includes production_readiness, term
     end
 
     assert grafana_dashboard.key?("panels"), "Grafana dashboard JSON must define panels"

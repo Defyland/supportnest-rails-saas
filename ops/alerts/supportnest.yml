@@ -1,0 +1,33 @@
+groups:
+  - name: supportnest-api
+    rules:
+      - alert: SupportNestReadinessDown
+        expr: up{job="supportnest-api"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "SupportNest API is not scrapeable"
+          description: "Prometheus cannot scrape /metrics; check /ready, app logs, and database connectivity."
+
+      - alert: SupportNestHighServerErrorRate
+        expr: |
+          sum(rate(supportnest_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(supportnest_http_requests_total[5m])), 1)
+          > 0.02
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "SupportNest 5xx rate is above 2%"
+          description: "Inspect recent deploys, database health, and app exceptions."
+
+      - alert: SupportNestOutboundDeadLetters
+        expr: increase(supportnest_outbound_events_total{status="failed"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Outbound events moved to dead letter"
+          description: "Run bin/outbox dlq and follow docs/runbooks/outbox-relay.md."
