@@ -1,31 +1,55 @@
-# SQLite. Versions 3.8.0 and up are supported.
-#   gem install sqlite3
-#
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem "sqlite3"
-#
+<% use_sqlite = ENV["DATABASE_ADAPTER"] == "sqlite3" %>
+<% if use_sqlite %>
 default: &default
   adapter: sqlite3
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
   timeout: 5000
+  schema_dump: schema.sqlite.rb
 
 development:
   <<: *default
   database: storage/development.sqlite3
 
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
-# Do not set this db to the same as development or production.
 test:
   <<: *default
   database: storage/test.sqlite3
 
-# SQLite3 write its data on the local filesystem, as such it requires
-# persistent disks. If you are deploying to a managed service, you should
-# make sure it provides disk persistence, as many don't.
-#
-# Similarly, if you deploy your application as a Docker container, you must
-# ensure the database is located in a persisted volume.
+benchmark:
+  <<: *default
+  database: storage/benchmark.sqlite3
+
 production:
   <<: *default
-  database: <%= ENV.fetch("DATABASE_PATH") { "storage/production.sqlite3" } %>
+  database: <%= ENV.fetch("DATABASE_PATH", "storage/production.sqlite3") %>
+<% else %>
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  host: <%= ENV.fetch("POSTGRES_HOST", ENV.fetch("DATABASE_HOST", "127.0.0.1")) %>
+  port: <%= ENV.fetch("POSTGRES_PORT", 5432) %>
+  username: <%= ENV.fetch("POSTGRES_USER", ENV.fetch("DATABASE_USER", "postgres")) %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", ENV.fetch("DATABASE_PASSWORD", "")) %>
+  variables:
+    statement_timeout: <%= ENV.fetch("POSTGRES_STATEMENT_TIMEOUT_MS", 5000) %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB", "supportnest_development") %>
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_TEST_DB", "supportnest_test#{ENV['TEST_ENV_NUMBER']}") %>
+
+benchmark:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_BENCHMARK_DB", "supportnest_benchmark") %>
+
+production:
+<% if ENV["DATABASE_URL"] && !ENV["DATABASE_URL"].empty? %>
+  url: <%= ENV["DATABASE_URL"] %>
+<% else %>
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_PRODUCTION_DB", "supportnest_production") %>
+<% end %>
+<% end %>

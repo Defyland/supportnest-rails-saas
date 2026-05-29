@@ -4,6 +4,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
   build-essential \
   curl \
   git \
+  libpq-dev \
   libsqlite3-dev \
   pkg-config \
   && rm -rf /var/lib/apt/lists/*
