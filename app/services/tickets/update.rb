@@ -1,28 +1,31 @@
 module Tickets
   class Update
     def self.call!(ticket:, actor:, attributes:)
-      ticket.assign_attributes(attributes)
-      apply_status_timestamps(ticket)
-      ticket.save!
+      ActiveRecord::Base.transaction do
+        ticket.assign_attributes(attributes)
+        apply_status_timestamps(ticket)
+        ticket.save!
+        changes = ticket.saved_changes.except("updated_at")
 
-      Auditing::Logger.log!(
-        organization: ticket.organization,
-        membership: actor,
-        auditable: ticket,
-        action: "ticket.updated",
-        metadata: { changes: ticket.saved_changes.except("updated_at") }
-      )
+        Auditing::Logger.log!(
+          organization: ticket.organization,
+          membership: actor,
+          auditable: ticket,
+          action: "ticket.updated",
+          metadata: { changes: changes }
+        )
 
-      Events::Publisher.publish!(
-        organization: ticket.organization,
-        aggregate: ticket,
-        event_type: "ticket.updated",
-        payload: {
-          ticket: ticket.as_api_json,
-          actor_membership_id: actor.id,
-          changes: ticket.saved_changes.except("updated_at")
-        }
-      )
+        Events::Publisher.publish!(
+          organization: ticket.organization,
+          aggregate: ticket,
+          event_type: "ticket.updated",
+          payload: {
+            ticket: ticket.as_api_json,
+            actor_membership_id: actor.id,
+            changes: changes
+          }
+        )
+      end
 
       ticket
     end
