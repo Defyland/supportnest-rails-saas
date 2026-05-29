@@ -4,8 +4,8 @@ one:
   organization: one
   aggregate_type: MyString
   aggregate_id: 1
-  event_type: MyString
-  status: MyString
+  event_type: ticket.created
+  status: pending
   payload: 
   idempotency_key: MyString
   correlation_id: MyString
@@ -17,8 +17,8 @@ two:
   organization: two
   aggregate_type: MyString
   aggregate_id: 1
-  event_type: MyString
-  status: MyString
+  event_type: ticket.updated
+  status: pending
   payload: 
   idempotency_key: MyString
   correlation_id: MyString

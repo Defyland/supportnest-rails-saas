@@ -77,7 +77,7 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/dia
 | `Membership` | Authenticated actor inside a tenant | unique `[organization_id, email]`, unique token digest |
 | `Ticket` | Support request lifecycle | unique `[organization_id, public_id]`, optimistic lock column |
 | `AuditLog` | Immutable action evidence | polymorphic auditable reference |
-| `OutboundEvent` | Async integration buffer | unique `idempotency_key`, dispatch status |
+| `OutboundEvent` | Async integration buffer | unique `idempotency_key`, retry/backoff state |
 
 ## 8. API documentation
 
@@ -94,7 +94,8 @@ Write-path mutations publish domain events through an outbox flow:
 1. the mutation is committed in the primary transaction
 2. an `OutboundEvent` record is stored with correlation metadata
 3. `OutboundEventDispatchJob` is enqueued after commit
-4. the dispatcher marks the event as `dispatched` or `failed`
+4. the dispatcher marks the event as `processing`, then `dispatched`, or schedules retry with exponential backoff
+5. events that exceed the retry budget are marked `failed`
 
 Current event types:
 

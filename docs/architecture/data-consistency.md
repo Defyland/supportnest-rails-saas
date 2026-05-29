@@ -44,6 +44,16 @@
   - write audit log
   - persist outbound event
 
+### Outbound dispatch
+
+- boundary: `OutboundEventDispatchJob#perform`
+- atomic work:
+  - move due pending events into `processing`
+  - attempt delivery
+  - mark success as `dispatched`
+  - mark transient failure as `pending` with `next_attempt_at`
+  - mark unsupported or exhausted events as `failed`
+
 ## Indexes and constraints
 
 - `organizations.slug` unique
@@ -51,6 +61,7 @@
 - `memberships.api_token_digest` unique
 - `tickets.organization_id + public_id` unique
 - `outbound_events.idempotency_key` unique
+- `outbound_events.status + next_attempt_at` supports due retry polling
 - foreign keys protect all tenant-owned relationships and membership ticket ownership
 
 ## Optimistic locking

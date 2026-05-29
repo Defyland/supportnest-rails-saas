@@ -17,7 +17,7 @@ SupportNest is organized as a Rails API modular monolith with explicit service b
 - **Identity and access**: membership-scoped token auth plus RBAC
 - **Ticketing**: create, read, update, and workflow timestamps
 - **Auditability**: immutable audit records for sensitive mutations
-- **Async integration**: outbox plus Active Job dispatcher
+- **Async integration**: outbox plus Active Job dispatcher with retry/backoff state
 - **Observability**: JSON logs, readiness, metrics, and traces
 
 ## Boundaries

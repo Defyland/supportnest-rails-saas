@@ -34,4 +34,5 @@
 
 - inspect the `outbound_events` table for `status = failed`
 - review `last_error` for unsupported or malformed event payloads
+- if the event is `pending` with `next_attempt_at`, retry was scheduled with backoff
 - replay manually by re-enqueueing `OutboundEventDispatchJob`

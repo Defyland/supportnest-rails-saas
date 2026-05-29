@@ -30,7 +30,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Some integration tests asserted absolute global counts | Medium | Fixed | Tests became order-dependent after seeds or previous data; delta assertions are more robust |
 | Membership and ticket update services did not wrap `save + audit + outbox` in one transaction | High | Fixed | The data-consistency doc promised transaction boundaries, but partial writes could occur if event publication failed |
 | Current persistence uses SQLite | Medium | Accepted trade-off | Suitable for the local challenge, but PostgreSQL is required before claiming production-grade concurrency guarantees |
-| Outbox dispatch has no broker-backed relay, retry queue, or dead-letter queue | Medium | Roadmap | The current async model is enough for the slice but not enough for production messaging durability |
+| Outbox dispatch has local retry/backoff but no external broker-backed relay | Medium | Improved | The current model now records processing state, retry delay, and final failure, but production messaging still needs a durable external worker/broker |
 | Membership tokens have expiry, rotation, and revocation | Medium | Fixed | Digest storage is now paired with token lifecycle controls and audit evidence |
 | Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
 

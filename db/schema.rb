@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_011000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_29_012000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -85,15 +85,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_011000) do
     t.string "event_type", null: false
     t.string "idempotency_key", null: false
     t.text "last_error"
+    t.datetime "next_attempt_at"
     t.integer "organization_id", null: false
     t.json "payload", default: {}, null: false
+    t.datetime "processing_started_at"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["idempotency_key"], name: "index_outbound_events_on_idempotency_key", unique: true
     t.index ["organization_id", "status"], name: "index_outbound_events_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_outbound_events_on_organization_id"
+    t.index ["status", "next_attempt_at"], name: "index_outbound_events_on_status_and_next_attempt_at"
     t.check_constraint "attempts_count >= 0", name: "outbound_events_attempts_count_non_negative"
-    t.check_constraint "status IN ('pending', 'dispatched', 'failed')", name: "outbound_events_status_valid"
+    t.check_constraint "next_attempt_at IS NULL OR status = 'pending'", name: "outbound_events_next_attempt_only_pending"
+    t.check_constraint "status IN ('pending', 'processing', 'dispatched', 'failed')", name: "outbound_events_status_valid"
   end
 
   create_table "tickets", force: :cascade do |t|
