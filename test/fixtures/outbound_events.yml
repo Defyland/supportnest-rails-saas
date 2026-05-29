@@ -1,0 +1,27 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  organization: one
+  aggregate_type: MyString
+  aggregate_id: 1
+  event_type: MyString
+  status: MyString
+  payload: 
+  idempotency_key: MyString
+  correlation_id: MyString
+  attempts_count: 1
+  last_error: MyText
+  dispatched_at: 2026-05-28 20:20:27
+
+two:
+  organization: two
+  aggregate_type: MyString
+  aggregate_id: 1
+  event_type: MyString
+  status: MyString
+  payload: 
+  idempotency_key: MyString
+  correlation_id: MyString
+  attempts_count: 1
+  last_error: MyText
+  dispatched_at: 2026-05-28 20:20:27

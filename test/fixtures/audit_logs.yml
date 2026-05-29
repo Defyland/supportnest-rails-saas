@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  organization: one
+  membership: one
+  action: MyString
+  auditable_type: MyString
+  auditable_id: 1
+  metadata: 
+  ip_address: MyString
+  user_agent: MyString
+
+two:
+  organization: two
+  membership: two
+  action: MyString
+  auditable_type: MyString
+  auditable_id: 1
+  metadata: 
+  ip_address: MyString
+  user_agent: MyString
