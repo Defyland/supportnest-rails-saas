@@ -1,0 +1,718 @@
+openapi: 3.1.0
+info:
+  title: SupportNest API
+  version: 1.0.0
+  description: >
+    Multi-tenant helpdesk SaaS API focused on tenant isolation, RBAC, auditability,
+    and async outbound events.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://127.0.0.1:3000
+tags:
+  - name: Platform
+    description: Health, readiness, and telemetry endpoints.
+  - name: Organizations
+    description: Tenant bootstrap and current-tenant lookup.
+  - name: Memberships
+    description: Tenant-scoped access management.
+  - name: Tickets
+    description: Ticket lifecycle and queue access.
+paths:
+  /up:
+    get:
+      operationId: getLiveness
+      security: []
+      tags: [Platform]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /ready:
+    get:
+      operationId: getReadiness
+      security: []
+      tags: [Platform]
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+        "503":
+          description: Dependency check failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessFailureResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /metrics:
+    get:
+      operationId: getMetrics
+      security: []
+      tags: [Platform]
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Metrics payload
+          content:
+            text/plain:
+              schema:
+                type: string
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/organizations:
+    post:
+      operationId: bootstrapOrganization
+      security: []
+      tags: [Organizations]
+      summary: Bootstrap a tenant and return the owner token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationBootstrapRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationBootstrapResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/organization:
+    get:
+      operationId: getCurrentOrganization
+      tags: [Organizations]
+      summary: Fetch current tenant context
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current tenant context
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [organization, actor]
+                properties:
+                  organization:
+                    $ref: "#/components/schemas/Organization"
+                  actor:
+                    $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/memberships:
+    get:
+      operationId: listMemberships
+      tags: [Memberships]
+      summary: List tenant memberships
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Membership list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memberships]
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createMembership
+      tags: [Memberships]
+      summary: Create a tenant membership
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipCreateRequest"
+      responses:
+        "201":
+          description: Membership created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/memberships/{id}:
+    patch:
+      operationId: updateMembership
+      tags: [Memberships]
+      summary: Update role, name, or suspension state
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipUpdateRequest"
+      responses:
+        "200":
+          description: Membership updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [membership]
+                properties:
+                  membership:
+                    $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/tickets:
+    get:
+      operationId: listTickets
+      tags: [Tickets]
+      summary: List tickets for the current tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, pending, resolved, closed]
+        - in: query
+          name: priority
+          schema:
+            type: string
+            enum: [low, normal, high, urgent]
+        - in: query
+          name: inbox
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ticket list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tickets]
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ticket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createTicket
+      tags: [Tickets]
+      summary: Create a ticket inside the current tenant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketCreateRequest"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket]
+                properties:
+                  ticket:
+                    $ref: "#/components/schemas/Ticket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [Tickets]
+      summary: Fetch a tenant-scoped ticket by public id
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            example: TCK-000001
+      responses:
+        "200":
+          description: Ticket payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket]
+                properties:
+                  ticket:
+                    $ref: "#/components/schemas/Ticket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateTicket
+      tags: [Tickets]
+      summary: Update ticket workflow fields
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            example: TCK-000001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketUpdateRequest"
+      responses:
+        "200":
+          description: Ticket updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket]
+                properties:
+                  ticket:
+                    $ref: "#/components/schemas/Ticket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API token
+  responses:
+    BadRequest:
+      description: Missing or malformed request payload
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated actor lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Tenant-scoped resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Request conflicts with an existing record
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationFailed:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Request limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    OrganizationBootstrapRequest:
+      type: object
+      required: [organization, owner]
+      properties:
+        organization:
+          type: object
+          required: [name, slug]
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            plan:
+              type: string
+              enum: [starter, growth, enterprise]
+            seat_limit:
+              type: integer
+            inbox_limit:
+              type: integer
+            ticket_limit:
+              type: integer
+        owner:
+          type: object
+          required: [email, full_name]
+          properties:
+            email:
+              type: string
+              format: email
+            full_name:
+              type: string
+    OrganizationBootstrapResponse:
+      type: object
+      required: [organization, owner]
+      properties:
+        organization:
+          $ref: "#/components/schemas/Organization"
+        owner:
+          allOf:
+            - $ref: "#/components/schemas/Membership"
+            - type: object
+              required: [api_token]
+              properties:
+                api_token:
+                  type: string
+                  example: sn_owner_abcd1234
+    MembershipCreateRequest:
+      type: object
+      required: [membership]
+      properties:
+        membership:
+          type: object
+          required: [email, full_name, role]
+          properties:
+            email:
+              type: string
+              format: email
+            full_name:
+              type: string
+            role:
+              type: string
+              enum: [admin, agent, viewer]
+    MembershipUpdateRequest:
+      type: object
+      required: [membership]
+      properties:
+        membership:
+          type: object
+          properties:
+            full_name:
+              type: string
+            role:
+              type: string
+              enum: [owner, admin, agent, viewer]
+            state:
+              type: string
+              enum: [active, suspended]
+    MembershipCreateResponse:
+      type: object
+      required: [membership]
+      properties:
+        membership:
+          allOf:
+            - $ref: "#/components/schemas/Membership"
+            - type: object
+              required: [api_token]
+              properties:
+                api_token:
+                  type: string
+                  example: sn_member_abcd1234
+    TicketCreateRequest:
+      type: object
+      required: [ticket]
+      properties:
+        ticket:
+          type: object
+          required: [subject, description, requester_name, requester_email]
+          properties:
+            subject:
+              type: string
+            description:
+              type: string
+            requester_name:
+              type: string
+            requester_email:
+              type: string
+              format: email
+            inbox:
+              type: string
+            priority:
+              type: string
+              enum: [low, normal, high, urgent]
+            assignee_membership_id:
+              type: integer
+    TicketUpdateRequest:
+      type: object
+      required: [ticket]
+      properties:
+        ticket:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [open, pending, resolved, closed]
+            priority:
+              type: string
+              enum: [low, normal, high, urgent]
+            inbox:
+              type: string
+            assignee_membership_id:
+              type: integer
+    Organization:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - plan
+        - state
+        - seat_limit
+        - inbox_limit
+        - ticket_limit
+        - current_month_ticket_count
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+          enum: [starter, growth, enterprise]
+        state:
+          type: string
+          enum: [active, suspended]
+        seat_limit:
+          type: integer
+        inbox_limit:
+          type: integer
+        ticket_limit:
+          type: integer
+        current_month_ticket_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Membership:
+      type: object
+      required:
+        - id
+        - email
+        - full_name
+        - role
+        - state
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, agent, viewer]
+        state:
+          type: string
+          enum: [active, suspended]
+        api_token_last_eight:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Ticket:
+      type: object
+      required:
+        - id
+        - subject
+        - description
+        - requester_name
+        - requester_email
+        - inbox
+        - status
+        - priority
+        - created_by
+      properties:
+        id:
+          type: string
+          example: TCK-000001
+        subject:
+          type: string
+        description:
+          type: string
+        requester_name:
+          type: string
+        requester_email:
+          type: string
+          format: email
+        inbox:
+          type: string
+        status:
+          type: string
+          enum: [open, pending, resolved, closed]
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+        first_response_at:
+          type: string
+          format: date-time
+        resolution_due_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          $ref: "#/components/schemas/Membership"
+        assignee:
+          anyOf:
+            - $ref: "#/components/schemas/Membership"
+            - type: "null"
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id, correlation_id]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            request_id:
+              type: string
+            correlation_id:
+              type: string
+    LivenessResponse:
+      type: object
+      required: [status, service, time]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: supportnest-api
+        time:
+          type: string
+          format: date-time
+    ReadinessResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          example: ready
+        checks:
+          type: object
+          required: [database, jobs]
+          properties:
+            database:
+              type: string
+              example: ok
+            jobs:
+              type: string
+              example: test
+    ReadinessFailureResponse:
+      type: object
+      required: [status, error]
+      properties:
+        status:
+          type: string
+          example: degraded
+        error:
+          type: string

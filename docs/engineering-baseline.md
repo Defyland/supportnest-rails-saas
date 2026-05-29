@@ -1,26 +1,22 @@
 # SupportNest Engineering Baseline
 
-This repository follows the initiative-wide standards below.
+This repository now implements the first functional slice of the SupportNest platform and keeps the initiative-wide standards active as repository policy.
 
-## Mandatory outcomes
+## Repository commitments
 
-- Product-grade `README.md` with product and engineering sections
-- `openapi.yaml` once the HTTP surface exists
+- product-grade `README.md` with both product and engineering depth
+- `openapi.yaml` as the source of truth for the HTTP contract
 - `docs/adr/`, `docs/architecture/`, `docs/benchmarks/`, `docs/api/`, `docs/diagrams/`, and `docs/runbooks/`
-- atomic Conventional Commit history
-- GitHub Actions for lint, tests, security, build, coverage, and OpenAPI validation
-- observability with structured logs, metrics, traces, request IDs, and readiness endpoints
-- documented k6 performance baselines
+- Conventional Commit history for future changes
+- GitHub Actions coverage for lint, tests, security, Docker build, coverage artifact upload, and OpenAPI linting
+- structured logs, request metadata, metrics, traces, and readiness endpoints
+- committed k6 scenarios and a documented local baseline workflow
 
 ## SupportNest-specific emphasis
 
-- strict tenant isolation on all organization-scoped resources
-- RBAC with an explicit permission matrix
-- billing plans, subscriptions, seat and inbox limits
-- webhook idempotency
-- audit log coverage for sensitive actions
-- BOLA-focused security tests
-
-## Phase 0 boundary
-
-This repository intentionally stops before scaffolding the Rails application. The goal of this phase is only to lock scope and standards.
+- strict tenant isolation on every organization-scoped lookup
+- RBAC with an explicit membership permission matrix
+- plan-based seat and ticket quotas
+- audit log coverage for security-sensitive mutations
+- BOLA-oriented request tests
+- outbox-style async event persistence before dispatch
