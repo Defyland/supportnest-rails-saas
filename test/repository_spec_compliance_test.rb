@@ -83,7 +83,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     "bin/rails db:drop db:create db:migrate test"
   ].freeze
 
-  REQUIRED_COMMIT_PATTERN = /\A(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?: .+\z/
+  REQUIRED_COMMIT_PATTERN = /\A(?:build|chore|ci|docs|feat|fix|ops|perf|refactor|revert|style|test)(?:\([^)]+\))?: .+\z/
   REQUIRED_SCENARIOS = %w[smoke load stress spike].freeze
 
   test "keeps the mandatory documentation structure and entrypoint files" do
