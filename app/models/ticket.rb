@@ -42,6 +42,7 @@ class Ticket < ApplicationRecord
       inbox: inbox,
       status: status,
       priority: priority,
+      lock_version: lock_version,
       first_response_at: first_response_at&.iso8601,
       resolution_due_at: resolution_due_at&.iso8601,
       closed_at: closed_at&.iso8601,

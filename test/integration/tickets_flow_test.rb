@@ -37,10 +37,72 @@ class TicketsFlowTest < ActionDispatch::IntegrationTest
     assert_response :created
     assert_equal "TCK-000001", json_response.dig("ticket", "id")
     assert_equal "urgent", json_response.dig("ticket", "priority")
+    assert_equal 0, json_response.dig("ticket", "lock_version")
+    assert_equal "\"0\"", response.headers["ETag"]
 
     get "/v1/tickets/TCK-000001", headers: auth_headers(agent_token)
 
     assert_response :ok
     assert_equal "Billing portal shows 500", json_response.dig("ticket", "subject")
+    assert_equal "\"0\"", response.headers["ETag"]
+  end
+
+  test "updates a ticket only when If-Match matches the current lock version" do
+    bootstrap = bootstrap_organization(slug: unique_slug("locking-helpdesk"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/tickets", params: {
+      ticket: {
+        subject: "Billing portal shows 500",
+        description: "Customer sees a 500 on checkout confirmation.",
+        requester_name: "Jamie Customer",
+        requester_email: "jamie@example.com",
+        inbox: "billing",
+        priority: "urgent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+
+    patch "/v1/tickets/TCK-000001", params: {
+      ticket: { status: "pending" }
+    }, headers: auth_headers(owner_token).merge("If-Match" => response.headers["ETag"]), as: :json
+
+    assert_response :ok
+    assert_equal "pending", json_response.dig("ticket", "status")
+    assert_equal 1, json_response.dig("ticket", "lock_version")
+    assert_equal "\"1\"", response.headers["ETag"]
+  end
+
+  test "rejects ticket updates with missing or stale If-Match headers" do
+    bootstrap = bootstrap_organization(slug: unique_slug("stale-helpdesk"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/tickets", params: {
+      ticket: {
+        subject: "Billing portal shows 500",
+        description: "Customer sees a 500 on checkout confirmation.",
+        requester_name: "Jamie Customer",
+        requester_email: "jamie@example.com",
+        inbox: "billing",
+        priority: "urgent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+
+    patch "/v1/tickets/TCK-000001", params: {
+      ticket: { status: "pending" }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :precondition_required
+    assert_equal "precondition_required", json_response.dig("error", "code")
+
+    patch "/v1/tickets/TCK-000001", params: {
+      ticket: { status: "pending" }
+    }, headers: auth_headers(owner_token).merge("If-Match" => "\"99\""), as: :json
+
+    assert_response :conflict
+    assert_equal "conflict", json_response.dig("error", "code")
   end
 end

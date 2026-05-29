@@ -56,8 +56,9 @@
 ## Optimistic locking
 
 - `tickets.lock_version` is present for optimistic locking
-- current controllers do not expose `If-Match` or explicit lock handling yet
-- the column exists so concurrent update semantics can be hardened without another schema break
+- ticket reads and writes return `ETag` with the current `lock_version`
+- `PATCH /v1/tickets/:id` requires `If-Match` to match the current ticket version
+- stale ticket updates return `409 conflict` instead of silently overwriting another agent's change
 
 ## Isolation assumptions
 

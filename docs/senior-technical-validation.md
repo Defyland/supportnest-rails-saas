@@ -32,7 +32,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Current persistence uses SQLite | Medium | Accepted trade-off | Suitable for the local challenge, but PostgreSQL is required before claiming production-grade concurrency guarantees |
 | Outbox dispatch has no broker-backed relay, retry queue, or dead-letter queue | Medium | Roadmap | The current async model is enough for the slice but not enough for production messaging durability |
 | Membership tokens have no expiry or rotation | Medium | Roadmap | Digest storage is good, but long-lived bearer tokens need lifecycle management in a real SaaS system |
-| Optimistic locking is present but not exposed via HTTP preconditions | Low | Roadmap | `lock_version` exists, but update APIs do not yet use `If-Match` or equivalent conflict handling |
+| Optimistic locking is present and exposed via HTTP preconditions | Low | Fixed | Ticket updates now require `If-Match` and return `409 conflict` on stale versions |
 
 ## Changes Executed In This Validation
 

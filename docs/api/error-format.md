@@ -25,6 +25,8 @@ All API failures return a standardized envelope:
 - `forbidden`: token is valid but role lacks permission
 - `not_found`: tenant-scoped resource not found
 - `conflict`: uniqueness or other write conflict
+- `precondition_required`: required conditional update header is missing
+- `precondition_failed`: conditional update header is malformed
 - `validation_failed`: model or quota validation failed
 - `rate_limited`: per-minute request quota exceeded
 

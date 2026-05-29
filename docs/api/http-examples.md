@@ -68,6 +68,22 @@ curl -X POST http://localhost:3000/v1/tickets \
   }'
 ```
 
+## Update a ticket with optimistic locking
+
+```bash
+curl -X PATCH http://localhost:3000/v1/tickets/TCK-000001 \
+  -H "Authorization: Bearer sn_member_..." \
+  -H "If-Match: \"0\"" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ticket": {
+      "status": "pending"
+    }
+  }'
+```
+
+Ticket reads and writes return `ETag` with the current `lock_version`. Ticket updates require `If-Match` so stale clients receive `409 conflict` instead of silently overwriting another agent's change.
+
 ## Validation failure example
 
 ```json

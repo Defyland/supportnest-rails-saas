@@ -28,6 +28,14 @@ class ApplicationController < ActionController::API
     )
   end
 
+  rescue_from ActiveRecord::StaleObjectError do |_error|
+    render_error(
+      code: "conflict",
+      message: "The resource was modified by another request.",
+      status: :conflict
+    )
+  end
+
   rescue_from ActiveRecord::RecordNotFound do |_error|
     render_error(
       code: "not_found",

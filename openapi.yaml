@@ -327,6 +327,13 @@ paths:
           schema:
             type: string
             example: TCK-000001
+        - in: header
+          name: If-Match
+          required: true
+          description: Current ticket lock version returned in the `ETag` response header.
+          schema:
+            type: string
+            example: "\"0\""
       requestBody:
         required: true
         content:
@@ -350,8 +357,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
 components:
   securitySchemes:
     BearerAuth:
@@ -385,6 +396,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Request conflicts with an existing record
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PreconditionRequired:
+      description: Required conditional update header is missing
       content:
         application/json:
           schema:
@@ -637,6 +654,8 @@ components:
         priority:
           type: string
           enum: [low, normal, high, urgent]
+        lock_version:
+          type: integer
         first_response_at:
           type: string
           format: date-time
