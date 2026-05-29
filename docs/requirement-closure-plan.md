@@ -13,7 +13,7 @@ This document records the remaining gaps identified after the first functional s
 | Performance evidence quality | The original benchmarks only hit `/up`, not tenant API workflows | Benchmark organization bootstrap plus tenant-authenticated ticket reads and writes | Complete |
 | Failure simulation coverage | Some documented failures were not covered by request tests | Add request tests for seat limit exhaustion, ticket quota exhaustion, and invalid input | Complete |
 | Consistency under load | Ticket public IDs were derived from `organization.tickets.count + 1`, which is unsafe under concurrent writes | Add an organization ticket sequence and allocate IDs inside the ticket creation transaction | Complete |
-| Commit history standard | Work was still only in the working tree | Create atomic Conventional Commits after verification succeeds | Pending |
+| Commit history standard | Work was still only in the working tree | Create atomic Conventional Commits after verification succeeds | Complete |
 
 ## Execution notes
 
@@ -25,4 +25,4 @@ This document records the remaining gaps identified after the first functional s
 
 ## Completion criteria
 
-This plan is complete only when each row above is either `Complete` with repository evidence or explicitly superseded by a stronger artifact in the worktree.
+This plan is now closed with repository evidence for every row above.
