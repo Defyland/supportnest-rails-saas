@@ -6,7 +6,9 @@ class OutboundEventTest < ActiveSupport::TestCase
     due_event = create_event(organization: organization, idempotency_key: "due", next_attempt_at: 1.minute.ago)
     create_event(organization: organization, idempotency_key: "future", next_attempt_at: 1.minute.from_now)
 
-    assert_equal [ due_event ], OutboundEvent.due_for_dispatch.to_a
+    due_ids = OutboundEvent.due_for_dispatch.where(organization: organization).pluck(:id)
+
+    assert_equal [ due_event.id ], due_ids
   end
 
   private
