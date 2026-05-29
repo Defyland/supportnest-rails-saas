@@ -60,8 +60,9 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
   ].freeze
 
   REQUIRED_CI_CHECKS = [
+    "actions/checkout@v5",
+    "actions/setup-node@v5",
     "bin/rubocop",
-    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
     "bundle exec bundler-audit check --update",
     "bin/sbom --output tmp/sbom-gems.cdx.json",
     "bundle exec brakeman --quiet --no-pager --exit-on-warn --exit-on-error",
@@ -70,7 +71,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     "docker compose -f docker-compose.prod-like.yml config",
     "postgres:16",
     "docker build -t supportnest-ci .",
-    "actions/upload-artifact@v4"
+    "actions/upload-artifact@v5"
   ].freeze
   REQUIRED_LOCAL_CI_CHECKS = [
     "bin/rubocop",
