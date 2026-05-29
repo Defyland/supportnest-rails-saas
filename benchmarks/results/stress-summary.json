@@ -1,0 +1,180 @@
+{
+    "metrics": {
+        "http_req_blocked": {
+            "avg": 0.007683500151653472,
+            "min": 0.001,
+            "med": 0.003,
+            "max": 19.673,
+            "p(90)": 0.004,
+            "p(95)": 0.005,
+            "p(99)": 0.01906999999999994
+        },
+        "http_req_waiting": {
+            "avg": 79.78256111616606,
+            "min": 3.174,
+            "med": 76.37450000000001,
+            "max": 469.713,
+            "p(90)": 149.8941,
+            "p(95)": 171.12014999999997,
+            "p(99)": 277.93901999999974
+        },
+        "data_received": {
+            "count": 9236032,
+            "rate": 115354.60376929979
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 29
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 469.769,
+            "p(90)": 149.9299,
+            "p(95)": 171.16119999999995,
+            "p(99)": 277.9926299999997,
+            "avg": 79.83826569608728,
+            "min": 3.196,
+            "med": 76.42699999999999
+        },
+        "http_req_duration": {
+            "med": 76.42699999999999,
+            "max": 469.769,
+            "p(90)": 149.9299,
+            "p(95)": 171.16119999999995,
+            "p(99)": 277.9926299999997,
+            "avg": 79.83826569608728,
+            "min": 3.196
+        },
+        "data_sent": {
+            "count": 1987961,
+            "rate": 24828.893345521214
+        },
+        "http_req_connecting": {
+            "min": 0,
+            "med": 0,
+            "max": 1.053,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "avg": 0.0013161965423111918
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "http_req_sending": {
+            "min": 0.003,
+            "med": 0.013,
+            "max": 0.798,
+            "p(90)": 0.019,
+            "p(95)": 0.024,
+            "p(99)": 0.04,
+            "avg": 0.014059599636033064
+        },
+        "http_req_receiving": {
+            "p(95)": 0.075,
+            "p(99)": 0.113,
+            "avg": 0.04164498028510726,
+            "min": 0.011,
+            "med": 0.037,
+            "max": 1.615,
+            "p(90)": 0.058
+        },
+        "iteration_duration": {
+            "med": 177.46158350000002,
+            "max": 571.920292,
+            "p(90)": 251.0639581,
+            "p(95)": 271.88756889999996,
+            "p(99)": 383.65811766,
+            "avg": 180.8469141958423,
+            "min": 103.418542
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 6594,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "http_reqs": {
+            "count": 6594,
+            "rate": 82.3566069557536
+        },
+        "iterations": {
+            "count": 6592,
+            "rate": 82.33162769977672
+        },
+        "vus_max": {
+            "value": 30,
+            "min": 30,
+            "max": 30
+        },
+        "checks": {
+            "passes": 6594,
+            "fails": 0,
+            "value": 1
+        }
+    },
+    "setup_data": {
+        "seededTicketId": "TCK-000001",
+        "token": "sn_owner_KXC52nFkmDULbLban6kBUxVGBVKnZbic"
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "bootstrap returns 201": {
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "bootstrap returns 201",
+                            "path": "::setup::bootstrap returns 201",
+                            "id": "ec868283158316a8e5a01e0736fc715a"
+                        },
+                        "seed ticket returns 201": {
+                            "fails": 0,
+                            "name": "seed ticket returns 201",
+                            "path": "::setup::seed ticket returns 201",
+                            "id": "edc109c7a3445ddb815eef1e848b9cff",
+                            "passes": 1
+                        }
+                    },
+                "name": "setup",
+                "path": "::setup"
+            }
+        },
+        "checks": {
+            "ticket read returns 200": {
+                "fails": 0,
+                "name": "ticket read returns 200",
+                "path": "::ticket read returns 200",
+                "id": "3df04054b59744cf9fa69b46932820d0",
+                "passes": 3661
+            },
+            "ticket create returns 201": {
+                "fails": 0,
+                "name": "ticket create returns 201",
+                "path": "::ticket create returns 201",
+                "id": "6734b18df2df06f960d2658f03ee8cca",
+                "passes": 1646
+            },
+            "organization read returns 200": {
+                "name": "organization read returns 200",
+                "path": "::organization read returns 200",
+                "id": "20c373a2d2d5b606153e231d542ae3d7",
+                "passes": 1285,
+                "fails": 0
+            }
+        }
+    }
+}
