@@ -63,3 +63,22 @@ This model covers the current SupportNest slice:
 - row-level or schema-level tenant hardening beyond application scoping
 - external broker option for the outbox relay when webhook delivery is not sufficient
 - formal secret source for production deployment
+
+## Transversal architecture additions
+
+| Area | Risk | Current control | Required engineering discipline |
+| --- | --- | --- | --- |
+| BOLA | A caller guesses another tenant's `public_id` or numeric id | Controllers resolve tenant-owned records through `current_organization` | Every new endpoint needs request tests proving cross-tenant access returns `404` or `403` |
+| RBAC | A lower-privilege role performs owner/admin actions | `Security::Authorizer` loads `config/authorization_matrix.yml` | Permission changes must update the matrix, docs, and authorization tests together |
+| API tokens | Token theft grants durable API access | Tokens are shown once, stored as SHA-256 digests, expire, rotate, and revoke | New token surfaces must never log raw tokens and must preserve `api_token_last_eight` auditability only |
+| Audit log | Sensitive mutation has no durable evidence | Domain services write `AuditLog` rows inside mutation transactions | New write paths must include actor, auditable, action, tenant, and relevant metadata |
+| Rate limiting | Token or IP floods degrade service | `Security::RateLimiter` limits by bearer token digest or remote IP | Bypass attempts should be observable through metrics, `request_id`, and `correlation_id` |
+| Outbound events | Duplicate delivery creates duplicate downstream side effects | Outbound events include `idempotency_key`, signed headers, retry state, and replay lineage | Consumers must treat delivery as at least once and deduplicate by idempotency key or event id |
+
+## Architectural boundaries
+
+- Public API requests cross into Rails through `ApplicationController`, where authentication, rate limiting, RBAC, and standardized errors are applied.
+- Tenant isolation is an application-level invariant today; PostgreSQL RLS is a future hardening layer, not a current runtime dependency.
+- Audit logs are application-durable in the MVP; external append-only storage is a later hardening step.
+- Outbound delivery crosses an integration boundary and must be treated as untrusted by consumers until HMAC verification succeeds.
+- Runtime secrets are injected through environment variables in the local production-like stack; a managed secrets backend is required before real production.

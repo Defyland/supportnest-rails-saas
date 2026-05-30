@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Defyland/supportnest-rails-saas/docs/events/outbound_event.v1.json",
+  "title": "SupportNest Outbound Event v1",
+  "type": "object",
+  "required": [
+    "id",
+    "event_type",
+    "aggregate_type",
+    "aggregate_id",
+    "organization_id",
+    "idempotency_key",
+    "correlation_id",
+    "payload",
+    "created_at"
+  ],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "organization.bootstrapped",
+        "membership.created",
+        "membership.updated",
+        "membership.token_revoked",
+        "membership.token_rotated",
+        "ticket.created",
+        "ticket.updated"
+      ]
+    },
+    "aggregate_type": { "type": "string", "minLength": 1 },
+    "aggregate_id": { "type": "integer", "minimum": 1 },
+    "organization_id": { "type": "integer", "minimum": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "replayed_from_outbound_event_id": { "type": "integer", "minimum": 1 },
+    "payload": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

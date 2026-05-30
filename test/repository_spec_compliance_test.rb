@@ -32,6 +32,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     docs/benchmarks
     docs/api
     docs/diagrams
+    docs/events
     docs/runbooks
     ops/alerts
     ops/grafana/provisioning/dashboards
@@ -116,9 +117,14 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       docs/benchmarks/local-baseline.md
       docs/adr/003-postgresql-primary.md
       docs/adr/004-production-outbox-relay.md
+      docs/adr/005-modular-monolith-before-microservices.md
+      docs/architecture/deployment-readiness.md
+      docs/events/README.md
+      docs/events/outbound_event.v1.json
       docs/runbooks/common-issues.md
       docs/runbooks/outbox-relay.md
       docs/runbooks/disaster-recovery.md
+      docs/runbooks/event-contract-change.md
     ].each do |path|
       assert_path_exists path
     end
@@ -210,12 +216,21 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     authorization_matrix = read_file("docs/security/authorization-matrix.md")
     data_consistency = read_file("docs/architecture/data-consistency.md")
     grafana_dashboard = JSON.parse(read_file("docs/diagrams/grafana-supportnest-overview.json"))
+    event_schema = JSON.parse(read_file("docs/events/outbound_event.v1.json"))
+    event_docs = read_file("docs/events/README.md")
+    modular_monolith_adr = read_file("docs/adr/005-modular-monolith-before-microservices.md")
+    deployment_readiness = read_file("docs/architecture/deployment-readiness.md")
+    event_contract_runbook = read_file("docs/runbooks/event-contract-change.md")
     production_readiness = read_file("docs/production-readiness.md")
     prod_like_compose = read_file("docker-compose.prod-like.yml")
     dockerfile = read_file("Dockerfile")
     prometheus_alerts = read_file("ops/alerts/supportnest.yml")
 
     [ "Scope", "Trust boundaries", "Primary threats", "Tests mapped to threats" ].each do |phrase|
+      assert_includes threat_model, phrase
+    end
+
+    [ "BOLA", "RBAC", "API tokens", "Audit log", "Rate limiting", "Outbound events" ].each do |phrase|
       assert_includes threat_model, phrase
     end
 
@@ -250,6 +265,39 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     %w[Outbox Operations Security Backups].each do |term|
       assert_includes production_readiness, term
     end
+
+    %w[
+      organization.bootstrapped
+      membership.token_rotated
+      ticket.updated
+      FOR\ UPDATE\ SKIP\ LOCKED
+      Idempotency-Key
+      X-SupportNest-Signature
+    ].each do |term|
+      assert_includes event_docs, term
+    end
+
+    %w[
+      organization.bootstrapped
+      membership.token_revoked
+      ticket.created
+      ticket.updated
+    ].each do |event_type|
+      assert_includes event_schema.dig("properties", "event_type", "enum"), event_type
+    end
+
+    [
+      "Modular Rails monolith",
+      "Microservices per domain module",
+      "Tenant isolation implications",
+      "Future service extraction must preserve tenant context"
+    ].each do |term|
+      assert_includes modular_monolith_adr, term
+    end
+
+    assert_includes deployment_readiness, "Non-root container execution"
+    assert_includes deployment_readiness, "Secret manager integration"
+    assert_includes event_contract_runbook, "deduplicate by `X-SupportNest-Event-ID` or `Idempotency-Key`"
 
     assert grafana_dashboard.key?("panels"), "Grafana dashboard JSON must define panels"
     assert_operator(

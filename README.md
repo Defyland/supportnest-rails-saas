@@ -53,7 +53,7 @@ SupportNest is implemented as a modular monolith with explicit application servi
 - an outbox-style `outbound_events` table plus relay decouples write paths from async delivery
 - middleware attaches request context and collects Prometheus-style HTTP metrics
 
-See [docs/architecture/overview.md](docs/architecture/overview.md) and [docs/diagrams/container.md](docs/diagrams/container.md).
+See [docs/architecture/overview.md](docs/architecture/overview.md), [docs/diagrams/container.md](docs/diagrams/container.md), and [docs/adr/005-modular-monolith-before-microservices.md](docs/adr/005-modular-monolith-before-microservices.md).
 
 ## 6. Tech stack
 
@@ -179,6 +179,7 @@ Security references:
 
 - threat model: [docs/security/threat-model.md](docs/security/threat-model.md)
 - authorization matrix: [docs/security/authorization-matrix.md](docs/security/authorization-matrix.md)
+- outbound events: [docs/events/README.md](docs/events/README.md)
 - authorization source of truth: `config/authorization_matrix.yml`
 
 | Role | Org read | Membership list | Membership create/update | Ticket read | Ticket create/update |
