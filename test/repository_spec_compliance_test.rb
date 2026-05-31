@@ -177,7 +177,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     assert_includes http_examples, "## Authorization failure example"
     assert_includes http_examples, "## Tenant-isolation failure example"
 
-    %w[missing_parameter unauthorized forbidden not_found conflict validation_failed rate_limited].each do |code|
+    %w[missing_parameter invalid_parameter unauthorized forbidden not_found conflict validation_failed rate_limited].each do |code|
       assert_includes error_format, code
     end
   end

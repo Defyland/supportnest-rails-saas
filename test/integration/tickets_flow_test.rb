@@ -139,4 +139,21 @@ class TicketsFlowTest < ActionDispatch::IntegrationTest
       json_response.fetch("pagination")
     )
   end
+
+  test "rejects invalid ticket list query parameters instead of silently defaulting" do
+    bootstrap = bootstrap_organization(slug: unique_slug("invalid-ticket-query"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    get "/v1/tickets", params: { status: "archived" }, headers: auth_headers(owner_token)
+
+    assert_response :bad_request
+    assert_equal "invalid_parameter", json_response.dig("error", "code")
+    assert_equal [ "must be one of: open, pending, resolved, closed" ], json_response.dig("error", "details", "status")
+
+    get "/v1/tickets", params: { limit: 101 }, headers: auth_headers(owner_token)
+
+    assert_response :bad_request
+    assert_equal "invalid_parameter", json_response.dig("error", "code")
+    assert_equal [ "must be between 1 and 100" ], json_response.dig("error", "details", "limit")
+  end
 end

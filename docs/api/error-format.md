@@ -21,6 +21,7 @@ All API failures return a standardized envelope:
 ## Codes
 
 - `missing_parameter`: required JSON envelope is missing
+- `invalid_parameter`: query parameter is malformed or outside its allowed range
 - `unauthorized`: bearer token missing or invalid
 - `forbidden`: token is valid but role lacks permission
 - `not_found`: tenant-scoped resource not found

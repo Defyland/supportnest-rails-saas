@@ -1,4 +1,13 @@
 class ApplicationController < ActionController::API
+  class InvalidParameter < StandardError
+    attr_reader :details
+
+    def initialize(message, details:)
+      super(message)
+      @details = details
+    end
+  end
+
   DEFAULT_PAGE_LIMIT = 50
   MAX_PAGE_LIMIT = 100
 
@@ -11,6 +20,15 @@ class ApplicationController < ActionController::API
       code: "missing_parameter",
       message: error.message,
       status: :bad_request
+    )
+  end
+
+  rescue_from InvalidParameter do |error|
+    render_error(
+      code: "invalid_parameter",
+      message: error.message,
+      status: :bad_request,
+      details: error.details
     )
   end
 
@@ -131,8 +149,8 @@ class ApplicationController < ActionController::API
   end
 
   def paginate(scope)
-    page = positive_integer_param(:page, 1)
-    limit = [ positive_integer_param(:limit, DEFAULT_PAGE_LIMIT), MAX_PAGE_LIMIT ].min
+    page = query_integer_param!(:page, default: 1, minimum: 1)
+    limit = query_integer_param!(:limit, default: DEFAULT_PAGE_LIMIT, minimum: 1, maximum: MAX_PAGE_LIMIT)
     total_count = scope.count
     total_pages = (total_count.to_f / limit).ceil
     total_pages = 1 if total_pages.zero?
@@ -151,13 +169,36 @@ class ApplicationController < ActionController::API
     ]
   end
 
-  def positive_integer_param(name, default)
+  def query_integer_param!(name, default:, minimum:, maximum: nil)
     raw_value = params[name]
     return default if raw_value.blank?
 
     value = Integer(raw_value, 10)
-    value.positive? ? value : default
+
+    if value < minimum || (maximum.present? && value > maximum)
+      bounds = maximum.present? ? "between #{minimum} and #{maximum}" : "greater than or equal to #{minimum}"
+      raise InvalidParameter.new(
+        "#{name} must be #{bounds}.",
+        details: { name => [ "must be #{bounds}" ] }
+      )
+    end
+
+    value
   rescue ArgumentError
-    default
+    raise InvalidParameter.new(
+      "#{name} must be an integer.",
+      details: { name => [ "must be an integer" ] }
+    )
+  end
+
+  def query_enum_param!(name, allowed_values)
+    raw_value = params[name]
+    return if raw_value.blank?
+    return raw_value if allowed_values.include?(raw_value)
+
+    raise InvalidParameter.new(
+      "#{name} must be one of: #{allowed_values.join(', ')}.",
+      details: { name => [ "must be one of: #{allowed_values.join(', ')}" ] }
+    )
   end
 end

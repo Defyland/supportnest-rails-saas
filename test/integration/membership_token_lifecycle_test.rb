@@ -116,4 +116,15 @@ class MembershipTokenLifecycleTest < ActionDispatch::IntegrationTest
     assert_nil json_response.dig("pagination", "next_page")
     assert_equal 1, json_response.dig("pagination", "prev_page")
   end
+
+  test "rejects invalid membership pagination parameters" do
+    bootstrap = bootstrap_organization(slug: unique_slug("invalid-membership-query"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    get "/v1/memberships", params: { page: "second" }, headers: auth_headers(owner_token)
+
+    assert_response :bad_request
+    assert_equal "invalid_parameter", json_response.dig("error", "code")
+    assert_equal [ "must be an integer" ], json_response.dig("error", "details", "page")
+  end
 end

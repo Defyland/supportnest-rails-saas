@@ -158,6 +158,8 @@ paths:
                       $ref: "#/components/schemas/Membership"
                   pagination:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -335,6 +337,8 @@ paths:
                       $ref: "#/components/schemas/Ticket"
                   pagination:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

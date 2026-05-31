@@ -4,8 +4,8 @@ module V1
       authorize!(:tickets_list)
 
       tickets = current_organization.tickets.includes(:created_by_membership, :assignee_membership).recent_first
-      tickets = tickets.where(status: params[:status]) if params[:status].present?
-      tickets = tickets.where(priority: params[:priority]) if params[:priority].present?
+      tickets = tickets.where(status: query_enum_param!(:status, Ticket.statuses.keys)) if params[:status].present?
+      tickets = tickets.where(priority: query_enum_param!(:priority, Ticket.priorities.keys)) if params[:priority].present?
       tickets = tickets.where(inbox: params[:inbox]) if params[:inbox].present?
       tickets, pagination = paginate(tickets)
 
