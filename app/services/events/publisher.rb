@@ -19,7 +19,17 @@ module Events
     end
 
     def self.dispatch_with_active_job?
-      ENV.fetch("OUTBOX_DISPATCH_MODE", "active_job") == "active_job"
+      dispatch_mode == "active_job"
+    end
+
+    def self.dispatch_mode
+      ENV.fetch("OUTBOX_DISPATCH_MODE") do
+        default_dispatch_mode
+      end
+    end
+
+    def self.default_dispatch_mode(environment = Rails.env)
+      environment.production? ? "relay" : "active_job"
     end
   end
 end

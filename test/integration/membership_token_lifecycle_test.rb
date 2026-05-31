@@ -89,4 +89,31 @@ class MembershipTokenLifecycleTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal "forbidden", json_response.dig("error", "code")
   end
+
+  test "lists memberships with bounded pagination metadata" do
+    bootstrap = bootstrap_organization(slug: unique_slug("paginated-memberships"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    3.times do |index|
+      post "/v1/memberships", params: {
+        membership: {
+          email: "agent-#{index}@tenant.test",
+          full_name: "Agent #{index}",
+          role: "agent"
+        }
+      }, headers: auth_headers(owner_token), as: :json
+
+      assert_response :created
+    end
+
+    get "/v1/memberships", params: { page: 2, limit: 2 }, headers: auth_headers(owner_token)
+
+    assert_response :ok
+    assert_equal 2, json_response.fetch("memberships").length
+    assert_equal 2, json_response.dig("pagination", "page")
+    assert_equal 2, json_response.dig("pagination", "limit")
+    assert_equal 4, json_response.dig("pagination", "total_count")
+    assert_nil json_response.dig("pagination", "next_page")
+    assert_equal 1, json_response.dig("pagination", "prev_page")
+  end
 end

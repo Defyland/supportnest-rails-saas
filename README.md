@@ -65,10 +65,10 @@ See [docs/architecture/overview.md](docs/architecture/overview.md), [docs/diagra
 - Active Job with the async adapter
 - OpenTelemetry SDK and Rails instrumentation
 - JSON structured logging
-- Prometheus-style plaintext metrics endpoint
+- Prometheus-style plaintext metrics endpoint backed by bounded counters and histograms
 - prod-like Compose stack with app, outbox relay, PostgreSQL, OTLP collector, Prometheus, and Grafana
 - Minitest with integration, model, and job coverage
-- Docker image running as a non-root `rails` user plus Docker Compose
+- multi-stage Docker image running as a non-root `rails` user plus Docker Compose
 - k6 benchmark scripts committed under `benchmarks/`
 
 ## 7. Domain model
@@ -159,7 +159,7 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 - OpenTelemetry instrumentation with optional OTLP export through `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `/up` liveness probe
 - `/ready` readiness probe with database check
-- `/metrics` plaintext Prometheus endpoint
+- `/metrics` plaintext Prometheus endpoint backed by bounded in-process aggregation
 - prod-like Prometheus alerts and Grafana provisioning under `ops/`
 - Grafana dashboard definition: [docs/diagrams/grafana-supportnest-overview.json](docs/diagrams/grafana-supportnest-overview.json)
 
@@ -169,11 +169,11 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 - token expiration, rotation, and revocation for membership API tokens
 - config-backed RBAC matrix for `owner`, `admin`, `agent`, and `viewer`
 - tenant isolation enforced in tenant-scoped lookups such as `current_organization.tickets.find_by!(public_id: ...)`
-- in-memory per-token or per-IP rate limiting
+- PostgreSQL-backed per-token or per-IP rate limiting with hashed identifiers
 - sensitive parameters filtered from logs
 - audit logs on bootstrap, membership changes, and ticket lifecycle changes
 - secrets supplied through environment variables at runtime rather than baked into the Docker image
-- Docker runtime runs the Rails process as a non-root user
+- Docker runtime uses a multi-stage build and runs the Rails process as a non-root user
 
 Security references:
 
@@ -192,11 +192,12 @@ Security references:
 ## 15. Trade-offs and decisions
 
 - PostgreSQL is the primary runtime database; SQLite remains only as an explicit local fallback via `DATABASE_ADAPTER=sqlite3`.
-- Active Job remains available for simple local dispatch; production-style mode uses a dedicated outbox relay via `OUTBOX_DISPATCH_MODE=relay`.
+- Active Job remains available for simple local dispatch; production mode defaults to the dedicated outbox relay unless `OUTBOX_DISPATCH_MODE=active_job` is explicitly set.
 - Membership tokens avoid a full user identity system in this slice and keep the RBAC story focused on tenant boundaries.
-- Metrics are exposed in Prometheus format without a dedicated client gem to keep the runtime light.
+- Metrics are exposed in Prometheus format without a dedicated client gem, but storage is bounded to counters, sums, and histogram buckets rather than per-request samples.
 - Container scanning is exposed through `bin/container-scan` and expects Trivy in the operator environment.
 - The Docker image does not bake `SECRET_KEY_BASE`; production-like Compose injects runtime env vars and real deployments should use a secrets manager.
+- Webhook delivery fails closed when `OUTBOUND_WEBHOOK_URL` is configured without `OUTBOUND_WEBHOOK_SECRET`.
 
 See the ADRs in [docs/adr/](docs/adr/).
 

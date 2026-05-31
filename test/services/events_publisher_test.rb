@@ -1,7 +1,7 @@
 require "test_helper"
 
 class EventsPublisherTest < ActiveSupport::TestCase
-  test "enqueues Active Job dispatch by default" do
+  test "enqueues Active Job dispatch by default outside production" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("publisher"))
     aggregate = organization
 
@@ -31,11 +31,21 @@ class EventsPublisherTest < ActiveSupport::TestCase
     end
   end
 
+  test "defaults production dispatch ownership to relay when mode is not explicitly set" do
+    with_outbox_dispatch_mode(nil) do
+      assert_equal "relay", Events::Publisher.default_dispatch_mode(ActiveSupport::StringInquirer.new("production"))
+    end
+  end
+
   private
 
   def with_outbox_dispatch_mode(value)
     original_value = ENV["OUTBOX_DISPATCH_MODE"]
-    ENV["OUTBOX_DISPATCH_MODE"] = value
+    if value.nil?
+      ENV.delete("OUTBOX_DISPATCH_MODE")
+    else
+      ENV["OUTBOX_DISPATCH_MODE"] = value
+    end
     yield
   ensure
     ENV["OUTBOX_DISPATCH_MODE"] = original_value

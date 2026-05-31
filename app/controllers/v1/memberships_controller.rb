@@ -3,10 +3,13 @@ module V1
     def index
       authorize!(:memberships_list)
 
+      memberships, pagination = paginate(current_organization.memberships.ordered)
+
       render json: {
-        memberships: current_organization.memberships.ordered.map do |membership|
+        memberships: memberships.map do |membership|
           membership.as_api_json(include_private: true)
-        end
+        end,
+        pagination: pagination
       }
     end
 

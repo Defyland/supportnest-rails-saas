@@ -28,4 +28,12 @@ class OutboundEventsWebhookDeliveryTest < ActiveSupport::TestCase
       headers.fetch(OutboundEvents::WebhookDelivery::SIGNATURE_HEADER)
     )
   end
+
+  test "fails closed when a real webhook endpoint is configured without a secret" do
+    error = assert_raises(OutboundEvents::WebhookDelivery::ConfigurationError) do
+      OutboundEvents::WebhookDelivery.new(endpoint: "https://events.example.test/supportnest", secret: nil)
+    end
+
+    assert_match "OUTBOUND_WEBHOOK_SECRET", error.message
+  end
 end

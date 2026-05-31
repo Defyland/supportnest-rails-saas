@@ -105,4 +105,38 @@ class TicketsFlowTest < ActionDispatch::IntegrationTest
     assert_response :conflict
     assert_equal "conflict", json_response.dig("error", "code")
   end
+
+  test "lists tickets with bounded pagination metadata" do
+    bootstrap = bootstrap_organization(slug: unique_slug("paginated-tickets"))
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    3.times do |index|
+      post "/v1/tickets", params: {
+        ticket: {
+          subject: "Paginated ticket #{index}",
+          description: "Ticket used to prove bounded collection responses.",
+          requester_name: "Jamie Customer",
+          requester_email: "customer-#{index}@example.com"
+        }
+      }, headers: auth_headers(owner_token), as: :json
+
+      assert_response :created
+    end
+
+    get "/v1/tickets", params: { page: 1, limit: 2 }, headers: auth_headers(owner_token)
+
+    assert_response :ok
+    assert_equal 2, json_response.fetch("tickets").length
+    assert_equal(
+      {
+        "page" => 1,
+        "limit" => 2,
+        "total_count" => 3,
+        "total_pages" => 2,
+        "next_page" => 2,
+        "prev_page" => nil
+      },
+      json_response.fetch("pagination")
+    )
+  end
 end

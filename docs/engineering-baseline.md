@@ -10,9 +10,9 @@ This repository now implements the first functional slice of the SupportNest pla
 - Conventional Commit history for future changes
 - GitHub Actions coverage for lint, tests, security, SBOM generation, Docker build, coverage artifact upload, and OpenAPI linting
 - optional Trivy-based container scanning through `bin/container-scan`
-- non-root Docker runtime with secrets injected at runtime
+- multi-stage non-root Docker runtime with secrets injected at runtime
 - PostgreSQL-backed development, test, benchmark, Docker Compose, and CI paths
-- structured logs, request metadata, metrics, traces, and readiness endpoints
+- structured logs, request metadata, bounded metrics, traces, and readiness endpoints
 - prod-like Compose stack with app, outbox relay, PostgreSQL, OTLP collector, Prometheus alerts, and Grafana provisioning
 - committed k6 scenarios and a documented local baseline workflow
 - automated `bin/benchmark` runner for database prep, managed server startup, k6 execution, and CPU/RSS capture
@@ -23,8 +23,10 @@ This repository now implements the first functional slice of the SupportNest pla
 - strict tenant isolation on every organization-scoped lookup
 - RBAC with an explicit membership permission matrix
 - plan-based seat and ticket quotas
+- bounded pagination for collection responses
+- PostgreSQL-backed rate limiting keyed by hashed token/IP identifiers
 - PostgreSQL row-lock tests for concurrent ticket sequence and quota behavior
 - audit log coverage for security-sensitive mutations
 - BOLA-oriented request tests
 - outbox-style async event persistence before dispatch
-- dedicated outbox relay with `FOR UPDATE SKIP LOCKED`, dead-letter handling, replay lineage, and signed webhook delivery
+- dedicated outbox relay with `FOR UPDATE SKIP LOCKED`, dead-letter handling, replay lineage, production relay default, and fail-closed signed webhook delivery

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_120000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -107,6 +107,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
     t.check_constraint "failed_at IS NULL OR status = 'failed'", name: "outbound_events_failed_at_only_failed"
     t.check_constraint "next_attempt_at IS NULL OR status = 'pending'", name: "outbound_events_next_attempt_only_pending"
     t.check_constraint "status IN ('pending', 'processing', 'dispatched', 'failed')", name: "outbound_events_status_valid"
+  end
+
+  create_table "rate_limit_buckets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "identifier_digest", null: false
+    t.integer "requests_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.datetime "window_started_at", null: false
+    t.index ["expires_at"], name: "index_rate_limit_buckets_on_expires_at"
+    t.index ["identifier_digest", "window_started_at"], name: "idx_on_identifier_digest_window_started_at_a1775b6ae6", unique: true
+    t.check_constraint "requests_count >= 0", name: "rate_limit_buckets_requests_count_non_negative"
   end
 
   create_table "tickets", force: :cascade do |t|

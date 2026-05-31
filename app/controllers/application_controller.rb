@@ -1,4 +1,7 @@
 class ApplicationController < ActionController::API
+  DEFAULT_PAGE_LIMIT = 50
+  MAX_PAGE_LIMIT = 100
+
   before_action :enforce_rate_limit!
   before_action :authenticate_membership!
   after_action :set_observability_headers
@@ -125,5 +128,36 @@ class ApplicationController < ActionController::API
     return if span.nil? || span.context.nil? || !span.context.valid?
 
     response.set_header("X-Trace-ID", span.context.hex_trace_id)
+  end
+
+  def paginate(scope)
+    page = positive_integer_param(:page, 1)
+    limit = [ positive_integer_param(:limit, DEFAULT_PAGE_LIMIT), MAX_PAGE_LIMIT ].min
+    total_count = scope.count
+    total_pages = (total_count.to_f / limit).ceil
+    total_pages = 1 if total_pages.zero?
+    records = scope.limit(limit).offset((page - 1) * limit)
+
+    [
+      records,
+      {
+        page: page,
+        limit: limit,
+        total_count: total_count,
+        total_pages: total_pages,
+        next_page: page < total_pages ? page + 1 : nil,
+        prev_page: page > 1 && page <= total_pages + 1 ? page - 1 : nil
+      }
+    ]
+  end
+
+  def positive_integer_param(name, default)
+    raw_value = params[name]
+    return default if raw_value.blank?
+
+    value = Integer(raw_value, 10)
+    value.positive? ? value : default
+  rescue ArgumentError
+    default
   end
 end

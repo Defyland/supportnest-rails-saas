@@ -4,6 +4,8 @@ require "openssl"
 
 module OutboundEvents
   class WebhookDelivery
+    class ConfigurationError < StandardError; end
+
     SIGNATURE_HEADER = "X-SupportNest-Signature"
     TIMESTAMP_HEADER = "X-SupportNest-Signature-Timestamp"
     DEFAULT_TIMEOUT_SECONDS = 5
@@ -13,6 +15,8 @@ module OutboundEvents
       @endpoint = endpoint
       @secret = secret
       @timeout = timeout
+
+      validate_configuration!
     end
 
     def deliver(event)
@@ -58,6 +62,12 @@ module OutboundEvents
     end
 
     private
+
+    def validate_configuration!
+      return if @endpoint.blank? || @secret.present?
+
+      raise ConfigurationError, "OUTBOUND_WEBHOOK_SECRET is required when OUTBOUND_WEBHOOK_URL is configured."
+    end
 
     def signing_secret
       @secret.presence || "development-outbound-secret"

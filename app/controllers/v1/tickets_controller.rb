@@ -7,8 +7,9 @@ module V1
       tickets = tickets.where(status: params[:status]) if params[:status].present?
       tickets = tickets.where(priority: params[:priority]) if params[:priority].present?
       tickets = tickets.where(inbox: params[:inbox]) if params[:inbox].present?
+      tickets, pagination = paginate(tickets)
 
-      render json: { tickets: tickets.map(&:as_api_json) }
+      render json: { tickets: tickets.map(&:as_api_json), pagination: pagination }
     end
 
     def create

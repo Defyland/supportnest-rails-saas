@@ -57,6 +57,16 @@
   - mark unsupported or exhausted events as `failed` with dead-letter metadata
   - replay failed events by creating new pending rows linked through `replayed_from_outbound_event_id`
 
+### Rate limiting
+
+- boundary: `Security::RateLimiter.check!`
+- atomic work:
+  - hash bearer-token/IP identifier before persistence
+  - create or find the current fixed-window bucket
+  - lock and increment the bucket counter
+  - return `429` retry metadata when the configured limit is exceeded
+  - expire old buckets by `expires_at`
+
 ## Indexes and constraints
 
 - `organizations.slug` unique
@@ -66,6 +76,8 @@
 - `outbound_events.idempotency_key` unique
 - `outbound_events.status + next_attempt_at` supports due retry polling
 - `outbound_events.status + failed_at` supports dead-letter inspection
+- `rate_limit_buckets.identifier_digest + window_started_at` unique for bounded fixed-window counters
+- `rate_limit_buckets.expires_at` supports cleanup of expired throttling buckets
 - foreign keys protect all tenant-owned relationships and membership ticket ownership
 
 ## Optimistic locking

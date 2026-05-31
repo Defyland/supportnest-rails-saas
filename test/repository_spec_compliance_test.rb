@@ -52,8 +52,9 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
     test/models/outbound_event_test.rb
-    test/services/events_publisher_test.rb
-    test/services/outbound_events_relay_test.rb
+      test/services/events_publisher_test.rb
+      test/services/security_rate_limiter_test.rb
+      test/services/outbound_events_relay_test.rb
     test/services/outbound_events_webhook_delivery_test.rb
     test/services/mutation_transaction_boundaries_test.rb
     test/services/security_authorizer_test.rb
@@ -257,6 +258,9 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
 
     assert_includes dockerfile, "USER rails:rails"
     assert_includes dockerfile, "RAILS_LOG_TO_STDOUT=1"
+    assert_includes dockerfile, "AS build"
+    assert_includes dockerfile, "BUNDLE_DEPLOYMENT=1"
+    assert_includes dockerfile, "COPY --from=build"
 
     %w[SupportNestReadinessDown SupportNestHighServerErrorRate SupportNestOutboundDeadLetters].each do |alert|
       assert_includes prometheus_alerts, alert

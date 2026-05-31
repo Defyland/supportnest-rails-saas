@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,8 +52,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
     t.check_constraint "api_token_expires_at > created_at", name: "memberships_api_token_expires_after_creation"
     t.check_constraint "api_token_revoked_at IS NULL OR api_token_revoked_at >= created_at", name: "memberships_api_token_revoked_after_creation"
     t.check_constraint "length(api_token_last_eight::text) = 8", name: "memberships_token_last_eight_length"
-    t.check_constraint "role::text = ANY (ARRAY['owner'::character varying::text, 'admin'::character varying::text, 'agent'::character varying::text, 'viewer'::character varying::text])", name: "memberships_role_valid"
-    t.check_constraint "state::text = ANY (ARRAY['active'::character varying::text, 'suspended'::character varying::text])", name: "memberships_state_valid"
+    t.check_constraint "role::text = ANY (ARRAY['owner'::character varying, 'admin'::character varying, 'agent'::character varying, 'viewer'::character varying]::text[])", name: "memberships_role_valid"
+    t.check_constraint "state::text = ANY (ARRAY['active'::character varying, 'suspended'::character varying]::text[])", name: "memberships_state_valid"
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -72,9 +72,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
     t.check_constraint "current_month_ticket_count >= 0", name: "organizations_current_month_ticket_count_non_negative"
     t.check_constraint "inbox_limit > 0", name: "organizations_inbox_limit_positive"
     t.check_constraint "next_ticket_sequence > 0", name: "organizations_next_ticket_sequence_positive"
-    t.check_constraint "plan::text = ANY (ARRAY['starter'::character varying::text, 'growth'::character varying::text, 'enterprise'::character varying::text])", name: "organizations_plan_valid"
+    t.check_constraint "plan::text = ANY (ARRAY['starter'::character varying, 'growth'::character varying, 'enterprise'::character varying]::text[])", name: "organizations_plan_valid"
     t.check_constraint "seat_limit > 0", name: "organizations_seat_limit_positive"
-    t.check_constraint "state::text = ANY (ARRAY['active'::character varying::text, 'suspended'::character varying::text])", name: "organizations_state_valid"
+    t.check_constraint "state::text = ANY (ARRAY['active'::character varying, 'suspended'::character varying]::text[])", name: "organizations_state_valid"
     t.check_constraint "ticket_limit > 0", name: "organizations_ticket_limit_positive"
   end
 
@@ -109,7 +109,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
     t.check_constraint "dead_letter_reason IS NULL OR status::text = 'failed'::text", name: "outbound_events_dead_letter_reason_only_failed"
     t.check_constraint "failed_at IS NULL OR status::text = 'failed'::text", name: "outbound_events_failed_at_only_failed"
     t.check_constraint "next_attempt_at IS NULL OR status::text = 'pending'::text", name: "outbound_events_next_attempt_only_pending"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'dispatched'::character varying::text, 'failed'::character varying::text])", name: "outbound_events_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'dispatched'::character varying, 'failed'::character varying]::text[])", name: "outbound_events_status_valid"
+  end
+
+  create_table "rate_limit_buckets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "identifier_digest", null: false
+    t.integer "requests_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.datetime "window_started_at", null: false
+    t.index ["expires_at"], name: "index_rate_limit_buckets_on_expires_at"
+    t.index ["identifier_digest", "window_started_at"], name: "idx_on_identifier_digest_window_started_at_a1775b6ae6", unique: true
+    t.check_constraint "requests_count >= 0", name: "rate_limit_buckets_requests_count_non_negative"
   end
 
   create_table "tickets", force: :cascade do |t|
@@ -138,8 +150,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_130000) do
     t.index ["organization_id"], name: "index_tickets_on_organization_id"
     t.check_constraint "length(public_id::text) > 0", name: "tickets_public_id_present"
     t.check_constraint "lock_version >= 0", name: "tickets_lock_version_non_negative"
-    t.check_constraint "priority::text = ANY (ARRAY['low'::character varying::text, 'normal'::character varying::text, 'high'::character varying::text, 'urgent'::character varying::text])", name: "tickets_priority_valid"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'pending'::character varying::text, 'resolved'::character varying::text, 'closed'::character varying::text])", name: "tickets_status_valid"
+    t.check_constraint "priority::text = ANY (ARRAY['low'::character varying, 'normal'::character varying, 'high'::character varying, 'urgent'::character varying]::text[])", name: "tickets_priority_valid"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'pending'::character varying, 'resolved'::character varying, 'closed'::character varying]::text[])", name: "tickets_status_valid"
   end
 
   add_foreign_key "audit_logs", "memberships"
