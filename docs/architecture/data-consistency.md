@@ -24,6 +24,18 @@
   - write audit log
   - persist outbound event
 
+### Membership update
+
+- boundary: `Memberships::Update.call!`
+- atomic work:
+  - lock organization row
+  - lock membership row
+  - preserve owner-management invariants
+  - verify seat quota before reactivating a suspended membership
+  - update membership state or role
+  - write audit log
+  - persist outbound event
+
 ### Ticket creation
 
 - boundary: `Tickets::Create.call!`

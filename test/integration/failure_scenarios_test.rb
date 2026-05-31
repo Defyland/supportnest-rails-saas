@@ -20,6 +20,49 @@ class FailureScenariosTest < ActionDispatch::IntegrationTest
     assert_includes json_response.dig("error", "message"), "Seat limit has been reached"
   end
 
+  test "returns 422 when reactivating a membership would exceed the seat limit" do
+    bootstrap = bootstrap_organization(
+      slug: unique_slug("seat-reactivation"),
+      organization_attributes: { seat_limit: 2 }
+    )
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "first-agent@tenant.test",
+        full_name: "First Agent",
+        role: "agent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    first_agent_id = json_response.dig("membership", "id")
+
+    patch "/v1/memberships/#{first_agent_id}", params: {
+      membership: { state: "suspended" }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :ok
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "second-agent@tenant.test",
+        full_name: "Second Agent",
+        role: "agent"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+
+    patch "/v1/memberships/#{first_agent_id}", params: {
+      membership: { state: "active" }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal "validation_failed", json_response.dig("error", "code")
+    assert_includes json_response.dig("error", "message"), "Seat limit has been reached"
+  end
+
   test "returns 422 when the tenant ticket quota is exhausted" do
     bootstrap = bootstrap_organization(
       slug: unique_slug("ticket-limit"),

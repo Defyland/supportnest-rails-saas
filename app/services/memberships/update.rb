@@ -14,6 +14,7 @@ module Memberships
         membership.lock!
         OwnershipGuard.ensure_actor_can_manage_target!(membership: membership, actor: actor)
         OwnershipGuard.ensure_update_preserves_owner_access!(membership: membership, attributes: attributes)
+        ensure_seat_available_for_activation!(membership, attributes)
 
         membership.assign_attributes(attributes)
         membership.save!
@@ -40,6 +41,17 @@ module Memberships
       end
 
       membership
+    end
+
+    def self.ensure_seat_available_for_activation!(membership, attributes)
+      normalized_attributes = attributes.to_h.transform_keys(&:to_sym)
+      next_state = normalized_attributes.fetch(:state, membership.state).to_s
+      return unless next_state == "active"
+      return if membership.active?
+      return if membership.organization.seat_available?
+
+      membership.organization.errors.add(:seat_limit, "has been reached for the current plan")
+      raise ActiveRecord::RecordInvalid, membership.organization
     end
   end
 end

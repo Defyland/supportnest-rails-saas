@@ -33,7 +33,7 @@ This model covers the current SupportNest slice:
 | BOLA / tenant breakout | Tenant A reads `TCK-000001` from tenant B | Controller lookups are scoped through `current_organization` | Medium if future endpoints forget tenant scoping |
 | Token theft | Leaked bearer token grants ticket access | Raw tokens are only shown once, stored as SHA-256 digests, expire after a fixed TTL, and can be rotated or revoked | Medium without device/session-level attribution |
 | Privilege escalation | Viewer creates tickets, admin takes over owner access, or the tenant loses every reachable owner | `Security::Authorizer` enforces role permissions and membership ownership guards protect owner mutation/token paths | Low for current endpoints |
-| Quota abuse | Unlimited tickets, seats, or inbox partitions exhaust shared resources | Seat, ticket, and inbox limits are enforced transactionally | Medium because limits are still local-plan fields, not billing-backed |
+| Quota abuse | Unlimited tickets, reactivated seats, or inbox partitions exhaust shared resources | Seat, ticket, and inbox limits are enforced transactionally | Medium because limits are still local-plan fields, not billing-backed |
 | Replay / duplicate side effects | Event dispatch repeats downstream operations | Outbound events store `idempotency_key`, signed webhook headers, and replay lineage | Medium until a real downstream consumer contract exists |
 | Audit tampering | Sensitive actions occur without traceability | Audit logs are written inside mutation flows | Medium because no append-only storage or external sink exists yet |
 | Input abuse | Invalid payloads or oversized fields pollute state | Strong params, model validations, and request tests reject malformed input | Low for current payload sizes |
@@ -43,11 +43,12 @@ This model covers the current SupportNest slice:
 
 1. Cross-tenant ticket access by guessing public IDs
 2. Creating memberships after seat quota exhaustion
-3. Creating tickets after monthly quota exhaustion
-4. Creating unbounded inbox partitions despite a tenant inbox quota
-5. Reusing a suspended membership token
-6. Writing unsupported outbound event types that fail silently
-7. Admin-level actor mutating owner credentials or leaving a tenant without any reachable owner
+3. Reactivating suspended memberships after the freed seat has been reassigned
+4. Creating tickets after monthly quota exhaustion
+5. Creating unbounded inbox partitions despite a tenant inbox quota
+6. Reusing a suspended membership token
+7. Writing unsupported outbound event types that fail silently
+8. Admin-level actor mutating owner credentials or leaving a tenant without any reachable owner
 
 ## Tests mapped to threats
 
