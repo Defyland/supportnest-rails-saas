@@ -2,8 +2,17 @@ module Tickets
   class Update
     def self.call!(ticket:, actor:, attributes:)
       ActiveRecord::Base.transaction do
+        ticket.organization.lock!
         ticket.assign_attributes(attributes)
         apply_status_timestamps(ticket)
+        raise ActiveRecord::RecordInvalid, ticket unless ticket.valid?
+
+        InboxLimit.ensure_available!(
+          organization: ticket.organization,
+          inbox: ticket.inbox,
+          excluding_ticket: ticket
+        ) if ticket.will_save_change_to_inbox?
+
         ticket.save!
         changes = ticket.saved_changes.except("updated_at")
 

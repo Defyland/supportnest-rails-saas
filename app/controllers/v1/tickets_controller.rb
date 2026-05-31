@@ -6,7 +6,8 @@ module V1
       tickets = current_organization.tickets.includes(:created_by_membership, :assignee_membership).recent_first
       tickets = tickets.where(status: query_enum_param!(:status, Ticket.statuses.keys)) if params[:status].present?
       tickets = tickets.where(priority: query_enum_param!(:priority, Ticket.priorities.keys)) if params[:priority].present?
-      tickets = tickets.where(inbox: params[:inbox]) if params[:inbox].present?
+      inbox = query_inbox_param
+      tickets = tickets.where(inbox: inbox) if inbox.present?
       tickets, pagination = paginate(tickets)
 
       render json: { tickets: tickets.map(&:as_api_json), pagination: pagination }
@@ -109,6 +110,19 @@ module V1
 
     def set_ticket_etag(ticket)
       response.set_header("ETag", %("#{ticket.lock_version}"))
+    end
+
+    def query_inbox_param
+      raw_value = params[:inbox]
+      return if raw_value.blank?
+
+      inbox = Ticket.normalize_inbox(raw_value)
+      return inbox if inbox.present? && Ticket::INBOX_FORMAT.match?(inbox)
+
+      raise InvalidParameter.new(
+        "inbox must be a URL-safe key.",
+        details: { inbox: [ "must be a URL-safe key" ] }
+      )
     end
   end
 end

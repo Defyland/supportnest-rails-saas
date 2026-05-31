@@ -46,6 +46,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Docker image carried build tooling into runtime | Medium | Fixed | Dockerfile now uses a multi-stage build with bundle deployment and a non-root runtime layer |
 | Authentication touched membership rows on every request | Medium | Fixed | `last_seen_at` writes are throttled to keep the signal while avoiding avoidable write amplification |
 | Owner continuity depended on coarse RBAC only | High | Fixed | Membership owner update, token rotation, and token revocation now reject non-owner actors and preserve at least one active owner with a valid token under an organization lock |
+| `inbox_limit` was modeled but not enforced | Medium | Fixed | Ticket create/update now normalize inbox keys, enforce tenant inbox quotas under the organization lock, and back the field with an index plus database length constraint |
 
 ## Changes Executed In This Validation
 
@@ -64,6 +65,7 @@ That said, seniority is not only about breadth of features. The project also nee
 13. Hardened production defaults for outbox ownership, webhook secret handling, and Docker runtime composition.
 14. Throttled `last_seen_at` refreshes so authentication does not write the membership row on every request.
 15. Added membership ownership guards so admins cannot mutate owner credentials and tenants cannot lose the last reachable owner.
+16. Enforced tenant inbox quotas during ticket creation/update and added schema/test coverage for inbox keys.
 
 ## Spec-Driven Evidence
 

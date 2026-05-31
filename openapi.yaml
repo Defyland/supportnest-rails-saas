@@ -309,6 +309,8 @@ paths:
           name: inbox
           schema:
             type: string
+            maxLength: 64
+            pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
         - in: query
           name: page
           schema:
@@ -618,6 +620,8 @@ components:
               format: email
             inbox:
               type: string
+              maxLength: 64
+              pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
             priority:
               type: string
               enum: [low, normal, high, urgent]
@@ -638,6 +642,8 @@ components:
               enum: [low, normal, high, urgent]
             inbox:
               type: string
+              maxLength: 64
+              pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
             assignee_membership_id:
               type: integer
     Organization:
@@ -745,6 +751,8 @@ components:
           format: email
         inbox:
           type: string
+          maxLength: 64
+          pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
         status:
           type: string
           enum: [open, pending, resolved, closed]

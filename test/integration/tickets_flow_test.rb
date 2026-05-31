@@ -106,6 +106,47 @@ class TicketsFlowTest < ActionDispatch::IntegrationTest
     assert_equal "conflict", json_response.dig("error", "code")
   end
 
+  test "rejects ticket update to a new inbox beyond the tenant inbox limit" do
+    bootstrap = bootstrap_organization(
+      slug: unique_slug("update-inbox-limit"),
+      organization_attributes: { inbox_limit: 1 }
+    )
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/tickets", params: {
+      ticket: {
+        subject: "First ticket",
+        description: "Uses the general inbox.",
+        requester_name: "Jamie Customer",
+        requester_email: "jamie@example.com",
+        inbox: "general"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+
+    post "/v1/tickets", params: {
+      ticket: {
+        subject: "Second ticket",
+        description: "Also uses the general inbox.",
+        requester_name: "Alex Customer",
+        requester_email: "alex@example.com",
+        inbox: "general"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    second_ticket_etag = response.headers["ETag"]
+
+    patch "/v1/tickets/TCK-000002", params: {
+      ticket: { inbox: "billing" }
+    }, headers: auth_headers(owner_token).merge("If-Match" => second_ticket_etag), as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal "validation_failed", json_response.dig("error", "code")
+    assert_includes json_response.dig("error", "message"), "Inbox limit has been reached"
+  end
+
   test "lists tickets with bounded pagination metadata" do
     bootstrap = bootstrap_organization(slug: unique_slug("paginated-tickets"))
     owner_token = bootstrap.dig("owner", "api_token")
@@ -155,5 +196,11 @@ class TicketsFlowTest < ActionDispatch::IntegrationTest
     assert_response :bad_request
     assert_equal "invalid_parameter", json_response.dig("error", "code")
     assert_equal [ "must be between 1 and 100" ], json_response.dig("error", "details", "limit")
+
+    get "/v1/tickets", params: { inbox: "billing queue!" }, headers: auth_headers(owner_token)
+
+    assert_response :bad_request
+    assert_equal "invalid_parameter", json_response.dig("error", "code")
+    assert_equal [ "must be a URL-safe key" ], json_response.dig("error", "details", "inbox")
   end
 end

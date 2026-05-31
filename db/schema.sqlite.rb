@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_31_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_124000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -141,10 +141,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_31_123000) do
     t.datetime "updated_at", null: false
     t.index ["assignee_membership_id"], name: "index_tickets_on_assignee_membership_id"
     t.index ["created_by_membership_id"], name: "index_tickets_on_created_by_membership_id"
+    t.index ["organization_id", "inbox"], name: "index_tickets_on_organization_id_and_inbox"
     t.index ["organization_id", "public_id"], name: "index_tickets_on_organization_id_and_public_id", unique: true
     t.index ["organization_id", "requester_email"], name: "index_tickets_on_organization_id_and_requester_email"
     t.index ["organization_id", "status"], name: "index_tickets_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_tickets_on_organization_id"
+    t.check_constraint "length(inbox) > 0 AND length(inbox) <= 64", name: "tickets_inbox_length"
     t.check_constraint "length(public_id) > 0", name: "tickets_public_id_present"
     t.check_constraint "lock_version >= 0", name: "tickets_lock_version_non_negative"
     t.check_constraint "priority IN ('low', 'normal', 'high', 'urgent')", name: "tickets_priority_valid"

@@ -30,6 +30,7 @@
 - atomic work:
   - lock organization row
   - verify monthly quota
+  - verify the ticket inbox does not exceed the tenant inbox quota
   - allocate next tenant ticket sequence
   - create ticket with deterministic `public_id`
   - increment `current_month_ticket_count`
@@ -40,6 +41,8 @@
 
 - boundary: `Tickets::Update.call!`
 - atomic work:
+  - lock organization row when evaluating quota-sensitive ticket changes
+  - reject new inbox values that would exceed the tenant inbox quota
   - update ticket state
   - derive workflow timestamps
   - write audit log
@@ -73,6 +76,8 @@
 - `memberships.organization_id + email` unique
 - `memberships.api_token_digest` unique
 - `tickets.organization_id + public_id` unique
+- `tickets.organization_id + inbox` supports tenant inbox quota checks and inbox filtering
+- `tickets.inbox` is constrained to a non-empty bounded key
 - `outbound_events.idempotency_key` unique
 - `outbound_events.status + next_attempt_at` supports due retry polling
 - `outbound_events.status + failed_at` supports dead-letter inspection

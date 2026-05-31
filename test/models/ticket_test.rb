@@ -66,6 +66,63 @@ class TicketTest < ActiveSupport::TestCase
     assert_includes ticket.errors[:assignee_membership], "must belong to the same organization"
   end
 
+  test "normalizes and validates inbox keys" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    owner = create_membership(organization: organization)
+
+    ticket = organization.tickets.create!(
+      public_id: "TCK-000123",
+      subject: "Inbox normalization",
+      description: "Inbox keys are normalized before persistence.",
+      requester_name: "Jamie Customer",
+      requester_email: "Jamie@Example.com",
+      inbox: " Billing_Tier-1 ",
+      priority: "normal",
+      created_by_membership: owner
+    )
+
+    assert_equal "billing_tier-1", ticket.inbox
+
+    invalid_ticket = organization.tickets.new(
+      public_id: "TCK-000124",
+      subject: "Invalid inbox",
+      description: "Inbox keys must remain URL-safe.",
+      requester_name: "Jamie Customer",
+      requester_email: "jamie@example.com",
+      inbox: "billing queue!",
+      priority: "normal",
+      created_by_membership: owner
+    )
+
+    assert_not invalid_ticket.valid?
+    assert_includes invalid_ticket.errors[:inbox], "is invalid"
+  end
+
+  test "enforces ticket inbox length at the database layer" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    owner = create_membership(organization: organization)
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Ticket.insert_all!([
+        {
+          organization_id: organization.id,
+          created_by_membership_id: owner.id,
+          public_id: "TCK-999997",
+          subject: "Invalid inbox",
+          description: "Should fail",
+          requester_name: "Jamie Customer",
+          requester_email: "jamie@example.com",
+          inbox: "a" * 65,
+          status: "open",
+          priority: "normal",
+          lock_version: 0,
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      ])
+    end
+  end
+
   test "enforces ticket status values at the database layer" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
     owner = create_membership(organization: organization)

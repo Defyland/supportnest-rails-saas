@@ -122,7 +122,7 @@ Webhook delivery includes HMAC signature headers, idempotency keys, and explicit
 - `tickets.lock_version` is exposed through `ETag`/`If-Match` for optimistic locking
 - uniqueness and foreign-key constraints backstop application-level validations
 - ticket identifiers are allocated from a tenant sequence inside the ticket creation transaction
-- PostgreSQL row locking serializes tenant ticket sequence and quota updates under concurrent writers
+- PostgreSQL row locking serializes tenant ticket sequence, ticket quota, and inbox quota updates under concurrent writers
 
 See [docs/architecture/data-consistency.md](docs/architecture/data-consistency.md).
 

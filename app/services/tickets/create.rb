@@ -12,13 +12,16 @@ module Tickets
         end
 
         public_id = format("TCK-%06d", organization.next_ticket_sequence)
-
-        ticket = organization.tickets.create!(
+        ticket = organization.tickets.build(
           attributes.merge(
             created_by_membership: actor,
             public_id: public_id
           )
         )
+        raise ActiveRecord::RecordInvalid, ticket unless ticket.valid?
+
+        InboxLimit.ensure_available!(organization: organization, inbox: ticket.inbox)
+        ticket.save!
 
         organization.update!(
           current_month_ticket_count: organization.current_month_ticket_count + 1,

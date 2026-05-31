@@ -1,4 +1,6 @@
 class Ticket < ApplicationRecord
+  INBOX_FORMAT = /\A[a-z0-9]+(?:[._-][a-z0-9]+)*\z/
+
   belongs_to :organization
   belongs_to :created_by_membership, class_name: "Membership", inverse_of: :created_tickets
   belongs_to :assignee_membership, class_name: "Membership", inverse_of: :assigned_tickets, optional: true
@@ -19,6 +21,7 @@ class Ticket < ApplicationRecord
   }, validate: true
 
   before_validation :normalize_requester_email
+  before_validation :normalize_inbox
   before_validation :assign_resolution_due_at, on: :create
 
   validates :subject, presence: true, length: { maximum: 140 }
@@ -26,11 +29,15 @@ class Ticket < ApplicationRecord
   validates :requester_name, presence: true
   validates :requester_email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :public_id, presence: true, uniqueness: { scope: :organization_id }
-  validates :inbox, presence: true
+  validates :inbox, presence: true, length: { maximum: 64 }, format: { with: INBOX_FORMAT }
 
   validate :memberships_belong_to_organization
 
   scope :recent_first, -> { order(created_at: :desc) }
+
+  def self.normalize_inbox(value)
+    value.to_s.strip.downcase.presence
+  end
 
   def as_api_json
     {
@@ -57,6 +64,10 @@ class Ticket < ApplicationRecord
 
   def normalize_requester_email
     self.requester_email = requester_email.to_s.strip.downcase if requester_email.present?
+  end
+
+  def normalize_inbox
+    self.inbox = self.class.normalize_inbox(inbox)
   end
 
   def assign_resolution_due_at
