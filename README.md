@@ -174,6 +174,7 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 - sensitive parameters filtered from logs
 - audit logs on bootstrap, membership changes, and ticket lifecycle changes
 - secrets supplied through environment variables at runtime rather than baked into the Docker image
+- production host authorization is enabled through `RAILS_ALLOWED_HOSTS`
 - Docker runtime uses a multi-stage build and runs the Rails process as a non-root user
 
 Security references:

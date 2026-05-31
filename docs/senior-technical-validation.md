@@ -49,6 +49,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | `inbox_limit` was modeled but not enforced | Medium | Fixed | Ticket create/update now normalize inbox keys, enforce tenant inbox quotas under the organization lock, and back the field with an index plus database length constraint |
 | Seat quota was enforced on create but not reactivation | Medium | Fixed | Membership reactivation now runs under the organization lock and rejects state changes that would exceed `seat_limit` |
 | No-op PATCH requests emitted audit and outbox noise | Low | Fixed | Membership and ticket update services now skip persistence, audit logging, and outbound events when the effective state is unchanged |
+| Production Host header protection was only scaffolded | Medium | Fixed | Production now enables Rails host authorization through `RAILS_ALLOWED_HOSTS`, with prod-like Compose defaults for local health checks and Prometheus scraping |
 
 ## Changes Executed In This Validation
 
@@ -70,6 +71,7 @@ That said, seniority is not only about breadth of features. The project also nee
 16. Enforced tenant inbox quotas during ticket creation/update and added schema/test coverage for inbox keys.
 17. Enforced seat quota on membership reactivation, closing the suspend-create-reactivate bypass.
 18. Suppressed audit/outbox emission for no-op membership and ticket updates.
+19. Enabled production Host header allowlisting through `RAILS_ALLOWED_HOSTS`.
 
 ## Spec-Driven Evidence
 

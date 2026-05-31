@@ -227,6 +227,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     production_readiness = read_file("docs/production-readiness.md")
     prod_like_compose = read_file("docker-compose.prod-like.yml")
     dockerfile = read_file("Dockerfile")
+    production_config = read_file("config/environments/production.rb")
     prometheus_alerts = read_file("ops/alerts/supportnest.yml")
 
     [ "Scope", "Trust boundaries", "Primary threats", "Tests mapped to threats" ].each do |phrase|
@@ -257,6 +258,10 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     %w[outbox-relay prometheus grafana otel-collector OUTBOX_DISPATCH_MODE].each do |term|
       assert_includes prod_like_compose, term
     end
+
+    assert_includes prod_like_compose, "RAILS_ALLOWED_HOSTS"
+    assert_includes production_config, "config.hosts.concat"
+    assert_includes production_config, "RAILS_ALLOWED_HOSTS"
 
     assert_includes dockerfile, "USER rails:rails"
     assert_includes dockerfile, "RAILS_LOG_TO_STDOUT=1"

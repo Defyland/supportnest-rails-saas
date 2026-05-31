@@ -29,6 +29,7 @@ services:
       OUTBOUND_WEBHOOK_SECRET: production-like-outbound-secret-change-me
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
       RATE_LIMIT_REQUESTS_PER_MINUTE: 120
+      RAILS_ALLOWED_HOSTS: localhost,127.0.0.1,app
       RAILS_LOG_TO_STDOUT: "1"
     depends_on:
       db:

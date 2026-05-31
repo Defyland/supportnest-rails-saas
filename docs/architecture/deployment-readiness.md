@@ -12,6 +12,7 @@ SupportNest currently documents and tests production-style behavior through Dock
 - Webhook delivery refuses to boot with a configured endpoint and missing signing secret.
 - Runtime environment variables for secrets.
 - Multi-stage runtime with Non-root container execution.
+- Rails Host Authorization is enabled from the `RAILS_ALLOWED_HOSTS` allowlist.
 - CI coverage for tests, security checks, and image validation.
 
 ## Deferred platform work
