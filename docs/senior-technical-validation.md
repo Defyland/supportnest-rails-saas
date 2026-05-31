@@ -44,6 +44,7 @@ That said, seniority is not only about breadth of features. The project also nee
 | Production async dispatch could silently use process-local Active Job | High | Fixed | Production default now assigns dispatch ownership to the relay; Active Job dispatch is opt-in via `OUTBOX_DISPATCH_MODE=active_job` |
 | Webhook signing secret had an unsafe configured-endpoint fallback | High | Fixed | Webhook delivery raises a configuration error when `OUTBOUND_WEBHOOK_URL` is present without `OUTBOUND_WEBHOOK_SECRET` |
 | Docker image carried build tooling into runtime | Medium | Fixed | Dockerfile now uses a multi-stage build with bundle deployment and a non-root runtime layer |
+| Authentication touched membership rows on every request | Medium | Fixed | `last_seen_at` writes are throttled to keep the signal while avoiding avoidable write amplification |
 
 ## Changes Executed In This Validation
 
@@ -60,6 +61,7 @@ That said, seniority is not only about breadth of features. The project also nee
 11. Reworked Prometheus metrics to keep bounded histogram/counter state instead of per-request samples.
 12. Added bounded pagination contracts for membership and ticket collection endpoints.
 13. Hardened production defaults for outbox ownership, webhook secret handling, and Docker runtime composition.
+14. Throttled `last_seen_at` refreshes so authentication does not write the membership row on every request.
 
 ## Spec-Driven Evidence
 

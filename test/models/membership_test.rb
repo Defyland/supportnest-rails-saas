@@ -43,6 +43,31 @@ class MembershipTest < ActiveSupport::TestCase
     assert_nil Membership.authenticate(raw_token)
   end
 
+  test "throttles last seen writes to avoid per-request write amplification" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("last-seen"))
+    raw_token, digest = Tokens::Issuer.issue(prefix: "sn_test_")
+    membership = organization.memberships.create!(
+      email: "owner@acme.test",
+      full_name: "Owner",
+      role: "owner",
+      state: "active",
+      api_token_digest: digest,
+      api_token_last_eight: raw_token.last(8)
+    )
+
+    membership.touch_last_seen!
+    first_seen_at = membership.reload.last_seen_at
+    assert first_seen_at.present?
+
+    membership.touch_last_seen!
+    assert_equal first_seen_at.to_i, membership.reload.last_seen_at.to_i
+
+    membership.update_columns(last_seen_at: 10.minutes.ago)
+    membership.touch_last_seen!
+
+    assert_operator membership.reload.last_seen_at, :>, 1.minute.ago
+  end
+
   test "enforces the unique membership email per organization in the database" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
 

@@ -1,4 +1,6 @@
 class Membership < ApplicationRecord
+  LAST_SEEN_TOUCH_INTERVAL = 5.minutes
+
   belongs_to :organization
   has_many :created_tickets, class_name: "Ticket", foreign_key: :created_by_membership_id,
                              inverse_of: :created_by_membership
@@ -41,7 +43,10 @@ class Membership < ApplicationRecord
   end
 
   def touch_last_seen!
-    update_column(:last_seen_at, Time.current)
+    now = Time.current
+    return if last_seen_at.present? && last_seen_at > LAST_SEEN_TOUCH_INTERVAL.ago
+
+    update_column(:last_seen_at, now)
   end
 
   def as_api_json(include_private: false)

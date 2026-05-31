@@ -73,6 +73,7 @@ This model covers the current SupportNest slice:
 | API tokens | Token theft grants durable API access | Tokens are shown once, stored as SHA-256 digests, expire, rotate, and revoke | New token surfaces must never log raw tokens and must preserve `api_token_last_eight` auditability only |
 | Audit log | Sensitive mutation has no durable evidence | Domain services write `AuditLog` rows inside mutation transactions | New write paths must include actor, auditable, action, tenant, and relevant metadata |
 | Rate limiting | Token or IP floods degrade service | `Security::RateLimiter` stores fixed-window counters in PostgreSQL using hashed bearer-token/IP identifiers | Bypass attempts should be observable through metrics, `request_id`, and `correlation_id` |
+| Authentication write amplification | High request volume turns authentication into unnecessary membership-row writes | `Membership#touch_last_seen!` only refreshes `last_seen_at` after a short interval | Short intervals improve freshness but increase write load |
 | Outbound events | Duplicate delivery creates duplicate downstream side effects | Outbound events include `idempotency_key`, signed headers, retry state, and replay lineage | Consumers must treat delivery as at least once and deduplicate by idempotency key or event id |
 
 ## Architectural boundaries
