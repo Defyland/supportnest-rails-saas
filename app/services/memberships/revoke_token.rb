@@ -2,6 +2,11 @@ module Memberships
   class RevokeToken
     def self.call!(membership:, actor:)
       ActiveRecord::Base.transaction do
+        membership.organization.lock!
+        membership.lock!
+        OwnershipGuard.ensure_actor_can_manage_target!(membership: membership, actor: actor)
+        OwnershipGuard.ensure_token_revocation_preserves_owner_access!(membership: membership)
+
         membership.update!(api_token_revoked_at: Time.current)
 
         Auditing::Logger.log!(

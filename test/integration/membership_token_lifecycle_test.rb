@@ -90,6 +90,44 @@ class MembershipTokenLifecycleTest < ActionDispatch::IntegrationTest
     assert_equal "forbidden", json_response.dig("error", "code")
   end
 
+  test "admin cannot mutate owner membership" do
+    bootstrap = bootstrap_organization(slug: unique_slug("owner-guard-admin"))
+    owner_id = bootstrap.dig("owner", "id")
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    post "/v1/memberships", params: {
+      membership: {
+        email: "admin@tenant.test",
+        full_name: "Admin User",
+        role: "admin"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    admin_token = json_response.dig("membership", "api_token")
+
+    patch "/v1/memberships/#{owner_id}", params: {
+      membership: { state: "suspended" }
+    }, headers: auth_headers(admin_token), as: :json
+
+    assert_response :forbidden
+    assert_equal "forbidden", json_response.dig("error", "code")
+    assert_equal "Only owners may manage owner memberships.", json_response.dig("error", "message")
+  end
+
+  test "last owner token cannot be revoked" do
+    bootstrap = bootstrap_organization(slug: unique_slug("owner-guard-revoke"))
+    owner_id = bootstrap.dig("owner", "id")
+    owner_token = bootstrap.dig("owner", "api_token")
+
+    patch "/v1/memberships/#{owner_id}/revoke_token", headers: auth_headers(owner_token), as: :json
+
+    assert_response :forbidden
+    assert_equal "forbidden", json_response.dig("error", "code")
+    assert_equal "Organizations must keep at least one active owner with a valid token.",
+                 json_response.dig("error", "message")
+  end
+
   test "lists memberships with bounded pagination metadata" do
     bootstrap = bootstrap_organization(slug: unique_slug("paginated-memberships"))
     owner_token = bootstrap.dig("owner", "api_token")

@@ -6,6 +6,10 @@ module Memberships
       api_token, api_token_digest = Tokens::Issuer.issue(prefix: "sn_member_")
 
       ActiveRecord::Base.transaction do
+        membership.organization.lock!
+        membership.lock!
+        OwnershipGuard.ensure_actor_can_manage_target!(membership: membership, actor: actor)
+
         membership.update!(
           api_token_digest: api_token_digest,
           api_token_last_eight: api_token.last(8),

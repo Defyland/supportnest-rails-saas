@@ -54,6 +54,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       test/models/outbound_event_test.rb
       test/models/rate_limit_bucket_test.rb
       test/services/events_publisher_test.rb
+      test/services/membership_ownership_guard_test.rb
       test/services/security_rate_limiter_test.rb
       test/services/outbound_events_relay_test.rb
     test/services/outbound_events_webhook_delivery_test.rb

@@ -168,6 +168,7 @@ The runner prepares an isolated `benchmark` database, starts Puma, waits for `/r
 - membership-scoped bearer API tokens stored as SHA-256 digests
 - token expiration, rotation, and revocation for membership API tokens
 - config-backed RBAC matrix for `owner`, `admin`, `agent`, and `viewer`
+- owner-continuity safeguards prevent non-owner actors from managing owner credentials and keep at least one reachable owner per tenant
 - tenant isolation enforced in tenant-scoped lookups such as `current_organization.tickets.find_by!(public_id: ...)`
 - PostgreSQL-backed per-token or per-IP rate limiting with hashed identifiers
 - sensitive parameters filtered from logs

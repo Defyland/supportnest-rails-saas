@@ -10,6 +10,11 @@ module Memberships
       end
 
       ActiveRecord::Base.transaction do
+        membership.organization.lock!
+        membership.lock!
+        OwnershipGuard.ensure_actor_can_manage_target!(membership: membership, actor: actor)
+        OwnershipGuard.ensure_update_preserves_owner_access!(membership: membership, attributes: attributes)
+
         membership.assign_attributes(attributes)
         membership.save!
         changes = membership.saved_changes.except("updated_at")

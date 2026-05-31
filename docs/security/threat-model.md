@@ -32,7 +32,7 @@ This model covers the current SupportNest slice:
 | --- | --- | --- | --- |
 | BOLA / tenant breakout | Tenant A reads `TCK-000001` from tenant B | Controller lookups are scoped through `current_organization` | Medium if future endpoints forget tenant scoping |
 | Token theft | Leaked bearer token grants ticket access | Raw tokens are only shown once, stored as SHA-256 digests, expire after a fixed TTL, and can be rotated or revoked | Medium without device/session-level attribution |
-| Privilege escalation | Viewer creates tickets or edits memberships | `Security::Authorizer` enforces role permissions | Low for current endpoints |
+| Privilege escalation | Viewer creates tickets, admin takes over owner access, or the tenant loses every reachable owner | `Security::Authorizer` enforces role permissions and membership ownership guards protect owner mutation/token paths | Low for current endpoints |
 | Quota abuse | Unlimited tickets or seats exhaust shared resources | Seat and ticket limits are enforced transactionally | Medium because limits are still local-plan fields, not billing-backed |
 | Replay / duplicate side effects | Event dispatch repeats downstream operations | Outbound events store `idempotency_key`, signed webhook headers, and replay lineage | Medium until a real downstream consumer contract exists |
 | Audit tampering | Sensitive actions occur without traceability | Audit logs are written inside mutation flows | Medium because no append-only storage or external sink exists yet |
@@ -46,6 +46,7 @@ This model covers the current SupportNest slice:
 3. Creating tickets after monthly quota exhaustion
 4. Reusing a suspended membership token
 5. Writing unsupported outbound event types that fail silently
+6. Admin-level actor mutating owner credentials or leaving a tenant without any reachable owner
 
 ## Tests mapped to threats
 
@@ -55,6 +56,7 @@ This model covers the current SupportNest slice:
 - Invalid input: `FailureScenariosTest`
 - Async failure handling: `OutboundEventDispatchJobTest` and `OutboundEventsRelayTest`
 - Authorization: `AuthorizationAndIsolationTest`
+- Owner continuity and owner-token mutation safeguards: `MembershipOwnershipGuardTest` and `MembershipTokenLifecycleTest`
 
 ## Next hardening steps
 
@@ -70,6 +72,7 @@ This model covers the current SupportNest slice:
 | --- | --- | --- | --- |
 | BOLA | A caller guesses another tenant's `public_id` or numeric id | Controllers resolve tenant-owned records through `current_organization` | Every new endpoint needs request tests proving cross-tenant access returns `404` or `403` |
 | RBAC | A lower-privilege role performs owner/admin actions | `Security::Authorizer` loads `config/authorization_matrix.yml` | Permission changes must update the matrix, docs, and authorization tests together |
+| Owner continuity | Admin actions or self-demotion remove the last reachable tenant owner | Membership update, rotation, and revocation paths serialize on the organization row and enforce at least one active owner with a valid token | New owner-affecting flows must go through the same domain guard rather than relying only on controller permissions |
 | API tokens | Token theft grants durable API access | Tokens are shown once, stored as SHA-256 digests, expire, rotate, and revoke | New token surfaces must never log raw tokens and must preserve `api_token_last_eight` auditability only |
 | Audit log | Sensitive mutation has no durable evidence | Domain services write `AuditLog` rows inside mutation transactions | New write paths must include actor, auditable, action, tenant, and relevant metadata |
 | Rate limiting | Token or IP floods degrade service | `Security::RateLimiter` stores fixed-window counters in PostgreSQL using hashed bearer-token/IP identifiers | Bypass attempts should be observable through metrics, `request_id`, and `correlation_id` |
