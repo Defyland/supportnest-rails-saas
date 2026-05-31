@@ -7,33 +7,35 @@ module Tickets
         apply_status_timestamps(ticket)
         raise ActiveRecord::RecordInvalid, ticket unless ticket.valid?
 
-        InboxLimit.ensure_available!(
-          organization: ticket.organization,
-          inbox: ticket.inbox,
-          excluding_ticket: ticket
-        ) if ticket.will_save_change_to_inbox?
+        if ticket.changed?
+          InboxLimit.ensure_available!(
+            organization: ticket.organization,
+            inbox: ticket.inbox,
+            excluding_ticket: ticket
+          ) if ticket.will_save_change_to_inbox?
 
-        ticket.save!
-        changes = ticket.saved_changes.except("updated_at")
+          ticket.save!
+          changes = ticket.saved_changes.except("updated_at")
 
-        Auditing::Logger.log!(
-          organization: ticket.organization,
-          membership: actor,
-          auditable: ticket,
-          action: "ticket.updated",
-          metadata: { changes: changes }
-        )
+          Auditing::Logger.log!(
+            organization: ticket.organization,
+            membership: actor,
+            auditable: ticket,
+            action: "ticket.updated",
+            metadata: { changes: changes }
+          )
 
-        Events::Publisher.publish!(
-          organization: ticket.organization,
-          aggregate: ticket,
-          event_type: "ticket.updated",
-          payload: {
-            ticket: ticket.as_api_json,
-            actor_membership_id: actor.id,
-            changes: changes
-          }
-        )
+          Events::Publisher.publish!(
+            organization: ticket.organization,
+            aggregate: ticket,
+            event_type: "ticket.updated",
+            payload: {
+              ticket: ticket.as_api_json,
+              actor_membership_id: actor.id,
+              changes: changes
+            }
+          )
+        end
       end
 
       ticket

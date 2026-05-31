@@ -24,6 +24,23 @@ class MutationTransactionBoundariesTest < ActiveSupport::TestCase
     assert_equal "agent", membership.reload.role
   end
 
+  test "membership update does not emit audit or outbox records for no-op changes" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
+    membership = create_membership(organization: organization, email: "agent@acme.test", role: "agent")
+
+    assert_no_difference [
+      -> { AuditLog.where(action: "membership.updated").count },
+      -> { OutboundEvent.where(event_type: "membership.updated").count }
+    ] do
+      Memberships::Update.call!(
+        membership: membership,
+        actor: actor,
+        attributes: { role: "agent" }
+      )
+    end
+  end
+
   test "ticket update rolls back when event publication fails" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
     actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
@@ -56,6 +73,32 @@ class MutationTransactionBoundariesTest < ActiveSupport::TestCase
     ticket.reload
     assert_equal "open", ticket.status
     assert_nil ticket.first_response_at
+  end
+
+  test "ticket update does not emit audit or outbox records for no-op changes" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
+    ticket = Tickets::Create.call!(
+      organization: organization,
+      actor: actor,
+      attributes: {
+        subject: "Customer cannot log in",
+        description: "The login flow loops back to the sign-in page.",
+        requester_name: "Jamie Customer",
+        requester_email: "jamie@example.com"
+      }
+    )
+
+    assert_no_difference [
+      -> { AuditLog.where(action: "ticket.updated").count },
+      -> { OutboundEvent.where(event_type: "ticket.updated").count }
+    ] do
+      Tickets::Update.call!(
+        ticket: ticket,
+        actor: actor,
+        attributes: { status: "open" }
+      )
+    end
   end
 
   private

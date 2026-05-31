@@ -17,27 +17,29 @@ module Memberships
         ensure_seat_available_for_activation!(membership, attributes)
 
         membership.assign_attributes(attributes)
-        membership.save!
-        changes = membership.saved_changes.except("updated_at")
+        if membership.changed?
+          membership.save!
+          changes = membership.saved_changes.except("updated_at")
 
-        Auditing::Logger.log!(
-          organization: membership.organization,
-          membership: actor,
-          auditable: membership,
-          action: "membership.updated",
-          metadata: { changes: changes }
-        )
+          Auditing::Logger.log!(
+            organization: membership.organization,
+            membership: actor,
+            auditable: membership,
+            action: "membership.updated",
+            metadata: { changes: changes }
+          )
 
-        Events::Publisher.publish!(
-          organization: membership.organization,
-          aggregate: membership,
-          event_type: "membership.updated",
-          payload: {
-            membership: membership.as_api_json(include_private: true),
-            actor_membership_id: actor.id,
-            changes: changes
-          }
-        )
+          Events::Publisher.publish!(
+            organization: membership.organization,
+            aggregate: membership,
+            event_type: "membership.updated",
+            payload: {
+              membership: membership.as_api_json(include_private: true),
+              actor_membership_id: actor.id,
+              changes: changes
+            }
+          )
+        end
       end
 
       membership
