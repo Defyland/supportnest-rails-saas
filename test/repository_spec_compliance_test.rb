@@ -51,7 +51,8 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/openapi_response_contract_test.rb
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
-    test/models/outbound_event_test.rb
+      test/models/outbound_event_test.rb
+      test/models/rate_limit_bucket_test.rb
       test/services/events_publisher_test.rb
       test/services/security_rate_limiter_test.rb
       test/services/outbound_events_relay_test.rb

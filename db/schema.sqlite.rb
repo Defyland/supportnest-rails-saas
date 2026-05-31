@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_31_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_123000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -117,7 +117,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_31_120000) do
     t.datetime "updated_at", null: false
     t.datetime "window_started_at", null: false
     t.index ["expires_at"], name: "index_rate_limit_buckets_on_expires_at"
-    t.index ["identifier_digest", "window_started_at"], name: "idx_on_identifier_digest_window_started_at_a1775b6ae6", unique: true
+    t.index ["identifier_digest", "window_started_at"], name: "index_rate_limit_buckets_on_identifier_window", unique: true
     t.check_constraint "requests_count >= 0", name: "rate_limit_buckets_requests_count_non_negative"
   end
 
