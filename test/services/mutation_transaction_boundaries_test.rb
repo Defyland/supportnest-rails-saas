@@ -41,6 +41,51 @@ class MutationTransactionBoundariesTest < ActiveSupport::TestCase
     end
   end
 
+  test "membership token rotation rolls back when event publication fails" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
+    membership = create_membership(organization: organization, email: "agent@acme.test", role: "agent")
+    original_digest = membership.api_token_digest
+    original_last_eight = membership.api_token_last_eight
+    original_expires_at = membership.api_token_expires_at
+
+    assert_no_difference [
+      -> { AuditLog.where(action: "membership.token_rotated").count },
+      -> { OutboundEvent.where(event_type: "membership.token_rotated").count }
+    ] do
+      assert_raises RuntimeError do
+        with_failing_event_publisher do
+          Memberships::RotateToken.call!(membership: membership, actor: actor)
+        end
+      end
+    end
+
+    membership.reload
+    assert_equal original_digest, membership.api_token_digest
+    assert_equal original_last_eight, membership.api_token_last_eight
+    assert_equal original_expires_at.to_i, membership.api_token_expires_at.to_i
+    assert_nil membership.api_token_revoked_at
+  end
+
+  test "membership token revocation rolls back when event publication fails" do
+    organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
+    actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
+    membership = create_membership(organization: organization, email: "agent@acme.test", role: "agent")
+
+    assert_no_difference [
+      -> { AuditLog.where(action: "membership.token_revoked").count },
+      -> { OutboundEvent.where(event_type: "membership.token_revoked").count }
+    ] do
+      assert_raises RuntimeError do
+        with_failing_event_publisher do
+          Memberships::RevokeToken.call!(membership: membership, actor: actor)
+        end
+      end
+    end
+
+    assert_not membership.reload.api_token_revoked?
+  end
+
   test "ticket update rolls back when event publication fails" do
     organization = Organization.create!(name: "Acme", slug: unique_slug("acme"))
     actor = create_membership(organization: organization, email: "owner@acme.test", role: "owner")
