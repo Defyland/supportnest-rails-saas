@@ -274,3 +274,7 @@ Production-readiness evidence is summarized in [docs/production-readiness.md](do
 - add billing entities, seat enforcement by subscription, and invoice visibility roles
 - expose audit log and outbound event APIs
 - add managed alert routing and production dashboards beyond the local baseline
+
+## 20. License
+
+MIT. See [LICENSE.txt](./LICENSE.txt).
