@@ -1,4 +1,4 @@
-FROM ruby:3.3.6-slim AS base
+FROM ruby:3.4.9-slim AS base
 
 WORKDIR /app
 
@@ -40,6 +40,8 @@ RUN mkdir -p storage tmp/pids log \
   && chown -R rails:rails storage tmp log
 
 USER rails:rails
+
+ENTRYPOINT ["./bin/docker-entrypoint"]
 
 EXPOSE 3000
 

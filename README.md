@@ -57,7 +57,7 @@ See [docs/architecture/overview.md](docs/architecture/overview.md), [docs/diagra
 
 ## 6. Tech stack
 
-- Ruby `3.3.6`
+- Ruby `3.4.9`
 - Rails `8.1`
 - PostgreSQL as the primary development, test, benchmark, and CI database
 - SQLite fallback through `DATABASE_ADAPTER=sqlite3` for a minimal local-only path
@@ -69,6 +69,7 @@ See [docs/architecture/overview.md](docs/architecture/overview.md), [docs/diagra
 - prod-like Compose stack with app, outbox relay, PostgreSQL, OTLP collector, Prometheus, and Grafana
 - Minitest with integration, model, and job coverage
 - multi-stage Docker image running as a non-root `rails` user plus Docker Compose
+- GitHub Actions CI and a Railway demo deployment path
 - k6 benchmark scripts committed under `benchmarks/`
 
 ## 7. Domain model
@@ -227,6 +228,11 @@ Production-like local stack:
 docker compose -f docker-compose.prod-like.yml up --build
 ```
 
+For a public reviewer-facing deployment, use the Railway path in
+[RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md). It keeps PostgreSQL as the production
+database and switches outbound dispatch to `active_job` so the demo can run as a
+single web service.
+
 ## 17. How to run tests
 
 ```bash
@@ -240,6 +246,12 @@ docker compose -f docker-compose.prod-like.yml config
 docker build -t supportnest-ci .
 bin/sbom --output tmp/sbom-gems.cdx.json
 ```
+
+GitHub Actions runs the repository safety net on pushes to `main` and pull
+requests. The workflow exercises the Rails test suite, SBOM generation, OpenAPI
+lint, and the Docker build path. Railway is documented as a lightweight public
+demo path in [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md) and
+[ADR 006](docs/adr/006-railway-single-service-demo.md).
 
 ## 18. Failure scenarios
 
