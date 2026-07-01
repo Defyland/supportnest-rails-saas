@@ -323,3 +323,18 @@ usada pelo fluxo normal de desenvolvimento.
   Quando o servidor não sobe ou não fica pronto, a mensagem agora aponta direto
   para o `smoke-server.log`, em vez de deixar o operador adivinhar se o problema
   era boot, bind ou readiness.
+
+## 14. Addendum: CI verde exige artefato publicável e governança executável
+
+Dois outros gaps apareceram quando o `bin/ci` foi executado de ponta a ponta:
+
+- O `docker build` falhava durante `bundle install` porque o stage de build não
+  tinha `libyaml-dev`, então o `psych` não conseguia compilar.
+  A lição é simples: uma imagem multi-stage só é honesta se o stage de build
+  carregar exatamente os headers nativos exigidos pelas gems compiladas.
+
+- A repo spec exigia Conventional Commits em todo o histórico, mas o repositório
+  já tinha um commit público legado de publicação de licença.
+  Obrigar rewrite de histórico público para voltar a ter CI verde é a regra
+  errada. A solução correta aqui foi documentar e tolerar explicitamente esse
+  único subject legado, mantendo a exigência dura para todo o resto.

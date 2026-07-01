@@ -22,6 +22,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
   git \
   libpq-dev \
   libsqlite3-dev \
+  libyaml-dev \
   pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
