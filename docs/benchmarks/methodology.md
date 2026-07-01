@@ -30,13 +30,13 @@ The committed benchmark runs use `k6 v1.7.1` installed via `go install`. The ben
 `bin/benchmark <scenario>` performs the full capture flow:
 
 - resets and migrates the benchmark database unless `BENCHMARK_PREPARE_DB=0`
-- starts Puma unless `BASE_URL` is provided or `BENCHMARK_SKIP_SERVER=1`
+- starts Puma on `BENCHMARK_PORT` (default `3203`) unless `BASE_URL` is provided or `BENCHMARK_SKIP_SERVER=1`
 - waits for `/ready` before running k6
 - exports trend stats with `med`, `p(95)`, and `p(99)` enabled
 - stores the raw k6 text summary and JSON summary under `benchmarks/results/`
 - samples the Puma process once per second with `ps` to capture `%CPU` and RSS peaks
 - writes the managed server log as `benchmarks/results/<scenario>-server.log`
 
-Use `bin/benchmark smoke`, `bin/benchmark load`, `bin/benchmark stress`, or `bin/benchmark spike` to run the same capture flow. Set `K6_BIN` if k6 is not on `PATH`.
+Use `bin/benchmark smoke`, `bin/benchmark load`, `bin/benchmark stress`, or `bin/benchmark spike` to run the same capture flow. Set `K6_BIN` to pin a specific binary; otherwise the runner probes `PATH`, `GOBIN`/`GOPATH`, and common Homebrew locations before failing. Override `BENCHMARK_PORT` when the default isolated port is not suitable.
 
 For an already running server, set `BASE_URL` and optionally `SERVER_PID`; in that mode the runner does not own server startup or shutdown.

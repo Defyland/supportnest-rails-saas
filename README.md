@@ -151,7 +151,7 @@ Run with `bin/rails test`.
 - baseline definition: [benchmarks/baseline.md](benchmarks/baseline.md)
 - captured results: [docs/benchmarks/local-baseline.md](docs/benchmarks/local-baseline.md)
 
-The runner prepares an isolated `benchmark` database, starts Puma, waits for `/ready`, runs k6, captures CPU/RSS samples, and writes summaries under `benchmarks/results/`.
+The runner prepares an isolated `benchmark` database, starts Puma on an isolated port by default (`BENCHMARK_PORT=3203`), waits for `/ready`, runs k6, captures CPU/RSS samples, and writes summaries under `benchmarks/results/`.
 
 ## 13. Observability
 

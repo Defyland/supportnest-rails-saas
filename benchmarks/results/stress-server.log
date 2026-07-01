@@ -1,22 +1,21 @@
 => Booting Puma
 => Rails 8.1.3 application starting in benchmark 
 => Run `bin/rails server --help` for more startup options
-I, [2026-05-29T08:52:15.562642 #23160]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::Rack was successfully installed with the following options {:allowed_request_headers=>[], :allowed_response_headers=>[], :application=>nil, :record_frontend_span=>false, :untraced_endpoints=>[], :url_quantization=>nil, :untraced_requests=>nil, :response_propagators=>[], :use_rack_events=>true, :allowed_rack_request_headers=>{}, :allowed_rack_response_headers=>{}}
-I, [2026-05-29T08:52:15.563299 #23160]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActionPack was successfully installed with the following options {:span_naming=>:semconv}
-I, [2026-05-29T08:52:15.587179 #23160]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveRecord was successfully installed with the following options {}
-I, [2026-05-29T08:52:15.588137 #23160]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveJob was successfully installed with the following options {:propagation_style=>:link, :force_flush=>false, :span_naming=>:queue}
-I, [2026-05-29T08:52:15.588439 #23160]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveSupport was successfully installed with the following options {}
+I, [2026-07-01T00:44:13.381429 #99540]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::Rack was successfully installed with the following options {allowed_request_headers: [], allowed_response_headers: [], application: nil, record_frontend_span: false, untraced_endpoints: [], url_quantization: nil, untraced_requests: nil, response_propagators: [], use_rack_events: true, allowed_rack_request_headers: {}, allowed_rack_response_headers: {}}
+I, [2026-07-01T00:44:13.381891 #99540]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActionPack was successfully installed with the following options {span_naming: :semconv}
+I, [2026-07-01T00:44:13.384040 #99540]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveRecord was successfully installed with the following options {}
+I, [2026-07-01T00:44:13.384816 #99540]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveJob was successfully installed with the following options {propagation_style: :link, force_flush: false, span_naming: :queue}
+I, [2026-07-01T00:44:13.385012 #99540]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::ActiveSupport was successfully installed with the following options {}
 Puma starting in single mode...
 * Puma version: 8.0.2 ("Into the Arena")
-* Ruby version: ruby 3.3.6 (2024-11-05 revision 75015d4c1f) [arm64-darwin24]
+* Ruby version: ruby 3.4.9 (2026-03-11 revision 76cca827ab) +YJIT +PRISM [arm64-darwin24]
 *  Min threads: 3
 *  Max threads: 3
 *  Environment: benchmark
-*          PID: 23160
-* Listening on http://127.0.0.1:3000
+*          PID: 99540
+* Listening on http://127.0.0.1:3203
 Use Ctrl-C to stop
-E, [2026-05-29T08:52:38.643568 #23160] ERROR -- : OpenTelemetry error: Unable to export 503 spans
-E, [2026-05-29T08:53:08.674374 #23160] ERROR -- : OpenTelemetry error: Unable to export 512 spans
-E, [2026-05-29T08:53:31.699149 #23160] ERROR -- : OpenTelemetry error: Unable to export 512 spans
+E, [2026-07-01T00:44:43.665077 #99540] ERROR -- : OpenTelemetry error: Unable to export 512 spans
+E, [2026-07-01T00:45:19.764025 #99540] ERROR -- : OpenTelemetry error: Unable to export 512 spans
 - Gracefully stopping, waiting for requests to finish
 Exiting

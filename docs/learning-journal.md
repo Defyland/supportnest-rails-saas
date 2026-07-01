@@ -299,3 +299,27 @@ Se a próxima feature for um novo workflow operacional de ticket:
 - não ensina billing completo;
 - não tenta cobrir UI humana rica;
 - mantém foco em plataforma multi-tenant API-first com operabilidade local.
+
+## 13. Addendum: benchmark que depende da porta padrão não é benchmark operável
+
+Um gap posterior apareceu na superfície de benchmark: o runner prometia subir a
+app e medir localmente, mas por default tentava bindar a mesma porta `3000`
+usada pelo fluxo normal de desenvolvimento.
+
+- Isso é um problema de operabilidade, não de performance.
+  O benchmark falhava antes de medir qualquer coisa quando o reviewer já estava
+  com outra app rodando na porta padrão.
+
+- A correção certa foi isolar o benchmark server por default.
+  O runner agora usa `BENCHMARK_PORT=3203` e mantém `BASE_URL` como override
+  explícito para cenários em que o operador já controla o servidor.
+
+- A segunda correção foi de portabilidade do executor.
+  O runner deixou de depender de um caminho local fixo para `k6`: agora ele
+  valida o binário encontrado e tenta `PATH`, `GOBIN`/`GOPATH` e caminhos
+  padrão de Homebrew antes de exigir `K6_BIN`.
+
+- A terceira correção foi de explicabilidade.
+  Quando o servidor não sobe ou não fica pronto, a mensagem agora aponta direto
+  para o `smoke-server.log`, em vez de deixar o operador adivinhar se o problema
+  era boot, bind ou readiness.
