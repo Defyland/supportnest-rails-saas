@@ -42,12 +42,29 @@
 - atomic work:
   - lock organization row
   - verify monthly quota
+  - evaluate `Tickets::AutoRouter` for deterministic experiment-backed support assignment
   - verify the ticket inbox does not exceed the tenant inbox quota
   - allocate next tenant ticket sequence
   - create ticket with deterministic `public_id`
   - increment `current_month_ticket_count`
   - write audit log
   - persist outbound event
+
+### Experiment assignment and conversion
+
+- boundary: `Experiments::Assign.call!`
+- atomic work:
+  - lock the experiment row
+  - reject inactive experiments
+  - reuse an existing `[experiment_id, subject_key]` assignment when present
+  - choose a weighted variant with deterministic SHA-256 bucketing
+  - persist assignment context and bucket evidence
+
+- boundary: `Experiments::Convert.call!`
+- atomic work:
+  - locate the existing assignment for the tenant subject
+  - reuse an existing `[organization_id, idempotency_key]` conversion when present
+  - persist outcome metadata and occurrence timestamp
 
 ### Ticket update
 
@@ -90,6 +107,10 @@
 - `tickets.organization_id + public_id` unique
 - `tickets.organization_id + inbox` supports tenant inbox quota checks and inbox filtering
 - `tickets.inbox` is constrained to a non-empty bounded key
+- `experiments.organization_id + key` unique
+- `experiment_variants.experiment_id + key` unique
+- `experiment_assignments.experiment_id + subject_key` unique
+- `experiment_conversions.organization_id + idempotency_key` unique
 - `outbound_events.idempotency_key` unique
 - `outbound_events.status + next_attempt_at` supports due retry polling
 - `outbound_events.status + failed_at` supports dead-letter inspection

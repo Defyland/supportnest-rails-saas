@@ -338,3 +338,38 @@ Dois outros gaps apareceram quando o `bin/ci` foi executado de ponta a ponta:
   Obrigar rewrite de histórico público para voltar a ter CI verde é a regra
   errada. A solução correta aqui foi documentar e tolerar explicitamente esse
   único subject legado, mantendo a exigência dura para todo o resto.
+
+## 15. Addendum: A/B testing só conta quando há assignment e conversão reais
+
+Este ciclo adicionou experimentos determinísticos e auto-routing de ticket como
+feature executável, não como documentação sobre growth ou produto.
+
+- Problema que resolve:
+  o projeto precisava provar A/B testing, algoritmo de roteamento e automação de
+  suporte com código verificável.
+
+- Decisão:
+  criar `Experiment`, `ExperimentVariant`, `ExperimentAssignment` e
+  `ExperimentConversion`, com assignment determinístico por SHA-256 e conversão
+  idempotente por tenant.
+
+- Decisão operacional:
+  `Tickets::AutoRouter` usa o experimento `ticket-auto-routing` quando ativo,
+  mas ticket creation continua disponível se o experimento não existir ou estiver
+  inválido. A fila padrão só considera `admin` e `agent` ativos.
+
+- Prós:
+  assignments são estáveis, variantes ponderadas suportam A/B e multivariate, e
+  `ticket.created` carrega evidência de roteamento no audit log e no outbox.
+
+- Contras:
+  o projeto ganhou quatro tabelas novas e ainda não tem UI/tarefa pública para
+  gerenciar experimentos. Essa escolha mantém o loop focado em backend e evita
+  adicionar superfície administrativa sem necessidade imediata.
+
+- Evidência:
+  `test/services/experiments_assignment_test.rb`,
+  `test/services/tickets_auto_router_test.rb`,
+  `test/integration/experiments_flow_test.rb`,
+  `test/integration/openapi_response_contract_test.rb` e
+  `docs/adr/008-deterministic-experiments-for-ticket-routing.md`.

@@ -39,6 +39,9 @@ Many support tools are easy to demo but weak on multi-tenancy boundaries, operat
 - `PATCH /v1/memberships/:id` updates role or suspension state
 - `POST /v1/tickets` creates tickets with quota enforcement and priority-based response deadlines
 - `PATCH /v1/tickets/:id` updates status, inbox, priority, and assignee
+- `POST /v1/experiments/:key/assignments` assigns tenant subjects to deterministic weighted variants
+- `POST /v1/experiments/:key/conversions` records idempotent conversion events
+- ticket creation can auto-assign active support agents through the `ticket-auto-routing` experiment
 - audit log records are created for bootstrap, membership, and ticket mutations
 - outbound events are persisted and dispatched asynchronously via Active Job or the dedicated outbox relay
 - `/up`, `/ready`, and `/metrics` expose platform health and telemetry surfaces
@@ -79,6 +82,10 @@ See [docs/architecture/overview.md](docs/architecture/overview.md), [docs/diagra
 | `Organization` | Tenant boundary and plan state | unique `slug`, seat and ticket quotas |
 | `Membership` | Authenticated actor inside a tenant | unique `[organization_id, email]`, unique token digest |
 | `Ticket` | Support request lifecycle | unique `[organization_id, public_id]`, optimistic lock column |
+| `Experiment` | Tenant-scoped A/B or multivariate test | unique `[organization_id, key]`, active/draft/paused/archive lifecycle |
+| `ExperimentVariant` | Weighted experiment choice | unique `[experiment_id, key]`, positive weight |
+| `ExperimentAssignment` | Stable subject-to-variant bucketing | unique `[experiment_id, subject_key]`, SHA-256 bucket evidence |
+| `ExperimentConversion` | Idempotent outcome tracking | unique `[organization_id, idempotency_key]` |
 | `AuditLog` | Immutable action evidence | polymorphic auditable reference |
 | `OutboundEvent` | Async integration buffer | unique `idempotency_key`, retry/backoff state, dead-letter metadata, replay lineage |
 
@@ -121,6 +128,8 @@ Webhook delivery includes HMAC signature headers, idempotency keys, and explicit
 - membership API tokens expire, can be rotated, and can be revoked
 - `tickets.public_id` is tenant-scoped and exposed externally instead of numeric ids
 - `tickets.lock_version` is exposed through `ETag`/`If-Match` for optimistic locking
+- experiment assignments are tenant-scoped, deterministic, and immutable for a given subject
+- experiment conversions are idempotent by tenant-scoped key
 - uniqueness and foreign-key constraints backstop application-level validations
 - ticket identifiers are allocated from a tenant sequence inside the ticket creation transaction
 - PostgreSQL row locking serializes tenant ticket sequence, ticket quota, and inbox quota updates under concurrent writers
@@ -133,6 +142,8 @@ The suite covers:
 
 - model tests for normalization, validations, and cross-tenant constraints
 - request/integration tests for bootstrap, memberships, tickets, and isolation
+- experiment tests for deterministic assignment, weighted variants, idempotent conversions, and REST contract coverage
+- routing tests for default load balancing, SLA-weighted assignment, and audit/outbox evidence
 - authorization tests for forbidden viewer actions
 - database constraint tests for unique indexes
 - PostgreSQL concurrency tests for tenant ticket sequence allocation and quota exhaustion
@@ -201,6 +212,8 @@ Security references:
 - Container scanning is exposed through `bin/container-scan` and expects Trivy in the operator environment.
 - The Docker image does not bake `SECRET_KEY_BASE`; production-like Compose injects runtime env vars and real deployments should use a secrets manager.
 - Webhook delivery fails closed when `OUTBOUND_WEBHOOK_URL` is configured without `OUTBOUND_WEBHOOK_SECRET`.
+- Deterministic experiment assignment and ticket auto-routing live in
+  [ADR 008](docs/adr/008-deterministic-experiments-for-ticket-routing.md).
 
 See the ADRs in [docs/adr/](docs/adr/).
 
@@ -260,6 +273,9 @@ demo path in [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md) and
 - missing or invalid bearer token returns `401`
 - forbidden role action returns `403`
 - cross-tenant ticket lookup returns `404`
+- paused or missing experiments return `404` for direct assignment requests
+- conversion retries with the same tenant idempotency key reuse the first recorded conversion
+- ticket auto-routing falls back to default load balancing when no active experiment is configured
 - unsupported outbound event dispatch marks the event as `failed`
 - exhausted outbound delivery moves the event to dead letter with replay lineage
 - readiness returns `503` if the database probe fails
@@ -270,7 +286,7 @@ Production-readiness evidence is summarized in [docs/production-readiness.md](do
 ## 19. Roadmap
 
 - add an external broker adapter for the outbox relay when signed webhook delivery is not sufficient
-- add inbox SLAs, assignment rules, and webhook subscriptions
+- add experiment management UI/tasks, inbox SLAs, assignment rules, and webhook subscriptions
 - add billing entities, seat enforcement by subscription, and invoice visibility roles
 - expose audit log and outbound event APIs
 - add managed alert routing and production dashboards beyond the local baseline

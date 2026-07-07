@@ -49,6 +49,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     test/integration/failure_scenarios_test.rb
     test/integration/membership_token_lifecycle_test.rb
     test/integration/openapi_response_contract_test.rb
+    test/integration/experiments_flow_test.rb
     test/integration/rate_limiting_and_metrics_test.rb
     test/jobs/outbound_event_dispatch_job_test.rb
       test/models/outbound_event_test.rb
@@ -58,6 +59,8 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       test/services/security_rate_limiter_test.rb
       test/services/outbound_events_relay_test.rb
     test/services/outbound_events_webhook_delivery_test.rb
+    test/services/experiments_assignment_test.rb
+    test/services/tickets_auto_router_test.rb
     test/services/mutation_transaction_boundaries_test.rb
     test/services/security_authorizer_test.rb
     test/services/ticket_concurrency_test.rb
@@ -124,6 +127,7 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       docs/adr/003-postgresql-primary.md
       docs/adr/004-production-outbox-relay.md
       docs/adr/005-modular-monolith-before-microservices.md
+      docs/adr/008-deterministic-experiments-for-ticket-routing.md
       docs/architecture/deployment-readiness.md
       docs/events/README.md
       docs/events/outbound_event.v1.json
@@ -168,6 +172,8 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     assert_includes paths.keys, "/v1/organization"
     assert_includes paths.keys, "/v1/memberships"
     assert_includes paths.keys, "/v1/tickets"
+    assert_includes paths.keys, "/v1/experiments/{experiment_key}/assignments"
+    assert_includes paths.keys, "/v1/experiments/{experiment_key}/conversions"
     assert paths.keys.any? { |path| path.match?(%r{\A/v1/}) }, "OpenAPI paths must remain versioned"
 
     assert_equal "http", security_scheme.fetch("type")
@@ -181,6 +187,8 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
     assert_includes http_examples, "## Validation failure example"
     assert_includes http_examples, "## Authorization failure example"
     assert_includes http_examples, "## Tenant-isolation failure example"
+    assert_includes http_examples, "## Assign an experiment variant"
+    assert_includes http_examples, "## Record an experiment conversion"
 
     %w[missing_parameter invalid_parameter unauthorized forbidden not_found conflict validation_failed rate_limited].each do |code|
       assert_includes error_format, code
@@ -245,10 +253,15 @@ class RepositorySpecComplianceTest < ActiveSupport::TestCase
       assert_includes authorization_matrix, phrase
     end
 
+    %w[experiments_assign experiments_convert].each do |phrase|
+      assert_includes authorization_matrix, phrase
+    end
+
     [
       "Transaction boundaries",
       "Indexes and constraints",
       "Optimistic locking",
+      "Experiment assignment and conversion",
       "Isolation assumptions",
       "Migration strategy",
       "Rollback strategy",

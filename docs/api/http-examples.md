@@ -100,6 +100,63 @@ curl -X PATCH http://localhost:3000/v1/tickets/TCK-000001 \
 
 Ticket reads and writes return `ETag` with the current `lock_version`. Ticket updates require `If-Match` so stale clients receive `409 conflict` instead of silently overwriting another agent's change.
 
+## Assign an experiment variant
+
+```bash
+curl -X POST http://localhost:3000/v1/experiments/ticket-auto-routing/assignments \
+  -H "Authorization: Bearer sn_member_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assignment": {
+      "subject_key": "jamie@example.com",
+      "context": {
+        "inbox": "billing",
+        "priority": "urgent"
+      }
+    }
+  }'
+```
+
+Response excerpt:
+
+```json
+{
+  "assignment": {
+    "experiment_key": "ticket-auto-routing",
+    "subject_key": "jamie@example.com",
+    "variant": {
+      "key": "sla-priority",
+      "name": "SLA priority",
+      "weight": 50
+    },
+    "bucket_value": 79,
+    "assigned_at": "2026-07-07T12:00:00Z"
+  }
+}
+```
+
+## Record an experiment conversion
+
+```bash
+curl -X POST http://localhost:3000/v1/experiments/ticket-auto-routing/conversions \
+  -H "Authorization: Bearer sn_member_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversion": {
+      "subject_key": "jamie@example.com",
+      "event_name": "ticket_resolved",
+      "idempotency_key": "ticket:TCK-000001:resolved",
+      "metadata": {
+        "ticket_id": "TCK-000001"
+      }
+    }
+  }'
+```
+
+Conversion writes are tenant-idempotent. Replaying the same
+`idempotency_key` returns the first conversion instead of duplicating outcome
+data.
+
 ## Validation failure example
 
 ```json

@@ -21,6 +21,8 @@
 | `tickets_read` | Yes | Yes | Yes | Yes |
 | `tickets_create` | Yes | Yes | Yes | No |
 | `tickets_update` | Yes | Yes | Yes | No |
+| `experiments_assign` | Yes | Yes | Yes | No |
+| `experiments_convert` | Yes | Yes | Yes | No |
 
 ## Additional invariants
 
@@ -30,6 +32,7 @@
 - every organization must retain at least one active owner with a non-expired, non-revoked token
 - a membership cannot suspend itself
 - all resource lookups remain tenant-scoped even when the role allows the action
+- experiment assignments and conversions are mutation endpoints; viewers cannot write experiment state
 
 ## Code references
 
