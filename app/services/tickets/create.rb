@@ -12,6 +12,9 @@ module Tickets
         end
 
         public_id = format("TCK-%06d", organization.next_ticket_sequence)
+        routing_decision = AutoRouter.call!(organization: organization, ticket_attributes: attributes)
+        attributes = attributes.merge(assignee_membership_id: routing_decision.assignee.id) if routing_decision.assigned?
+
         ticket = organization.tickets.build(
           attributes.merge(
             created_by_membership: actor,
@@ -33,7 +36,11 @@ module Tickets
           membership: actor,
           auditable: ticket,
           action: "ticket.created",
-          metadata: { ticket_id: ticket.public_id, priority: ticket.priority }
+          metadata: {
+            ticket_id: ticket.public_id,
+            priority: ticket.priority,
+            routing: routing_decision.as_json
+          }
         )
 
         Events::Publisher.publish!(
@@ -42,7 +49,8 @@ module Tickets
           event_type: "ticket.created",
           payload: {
             ticket: ticket.as_api_json,
-            actor_membership_id: actor.id
+            actor_membership_id: actor.id,
+            routing: routing_decision.as_json
           }
         )
       end
