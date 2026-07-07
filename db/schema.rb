@@ -86,7 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_07_120000) do
     t.datetime "updated_at", null: false
     t.index ["organization_id", "key"], name: "index_experiments_on_organization_id_and_key", unique: true
     t.index ["organization_id"], name: "index_experiments_on_organization_id"
-    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'active'::character varying, 'paused'::character varying, 'archived'::character varying]::text[])", name: "experiments_status_valid"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'active'::character varying::text, 'paused'::character varying::text, 'archived'::character varying::text])", name: "experiments_status_valid"
   end
 
   create_table "memberships", force: :cascade do |t|
