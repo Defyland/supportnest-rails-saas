@@ -10,6 +10,8 @@ Rails.application.routes.draw do
       patch :rotate_token, on: :member
       patch :revoke_token, on: :member
     end
+    post "/experiments/:experiment_key/assignments", to: "experiment_assignments#create"
+    post "/experiments/:experiment_key/conversions", to: "experiment_conversions#create"
     resources :tickets, only: %i[index create show update]
   end
 end

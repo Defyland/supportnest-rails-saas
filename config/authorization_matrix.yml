@@ -10,6 +10,8 @@ roles:
     - tickets_read
     - tickets_create
     - tickets_update
+    - experiments_assign
+    - experiments_convert
   admin:
     - organizations_read
     - memberships_list
@@ -21,6 +23,8 @@ roles:
     - tickets_read
     - tickets_create
     - tickets_update
+    - experiments_assign
+    - experiments_convert
   agent:
     - organizations_read
     - memberships_list
@@ -28,6 +32,8 @@ roles:
     - tickets_read
     - tickets_create
     - tickets_update
+    - experiments_assign
+    - experiments_convert
   viewer:
     - organizations_read
     - memberships_list

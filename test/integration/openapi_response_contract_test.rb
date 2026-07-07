@@ -46,6 +46,33 @@ class OpenapiResponseContractTest < ActionDispatch::IntegrationTest
     assert_required_keys(json_response.fetch("ticket"), "Ticket")
   end
 
+  test "experiment assignment and conversion responses satisfy the OpenAPI contract" do
+    bootstrap = bootstrap_organization(slug: unique_slug("contract-experiment"))
+    owner_token = bootstrap.dig("owner", "api_token")
+    organization = Organization.find_by!(slug: bootstrap.dig("organization", "slug"))
+    experiment = organization.experiments.create!(key: "ticket-routing", name: "Ticket routing", status: "active")
+    experiment.experiment_variants.create!(key: "least-open-tickets", name: "Least open tickets", weight: 50)
+    experiment.experiment_variants.create!(key: "sla-priority", name: "SLA priority", weight: 50)
+
+    post "/v1/experiments/ticket-routing/assignments", params: {
+      assignment: { subject_key: "customer-123" }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    assert_required_keys(json_response.fetch("assignment"), "ExperimentAssignment")
+
+    post "/v1/experiments/ticket-routing/conversions", params: {
+      conversion: {
+        subject_key: "customer-123",
+        event_name: "ticket_resolved",
+        idempotency_key: "ticket:TCK-000001:resolved"
+      }
+    }, headers: auth_headers(owner_token), as: :json
+
+    assert_response :created
+    assert_required_keys(json_response.fetch("conversion"), "ExperimentConversion")
+  end
+
   private
 
   def assert_required_keys(payload, schema_name)

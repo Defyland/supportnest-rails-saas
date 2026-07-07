@@ -3,6 +3,9 @@ class Organization < ApplicationRecord
   has_many :tickets, dependent: :destroy
   has_many :audit_logs, dependent: :destroy
   has_many :outbound_events, dependent: :destroy
+  has_many :experiments, dependent: :destroy
+  has_many :experiment_assignments, dependent: :destroy
+  has_many :experiment_conversions, dependent: :destroy
 
   enum :plan, {
     starter: "starter",

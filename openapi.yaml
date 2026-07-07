@@ -19,6 +19,8 @@ tags:
     description: Tenant-scoped access management.
   - name: Tickets
     description: Ticket lifecycle and queue access.
+  - name: Experiments
+    description: Deterministic experiment assignment and conversion tracking.
 paths:
   /up:
     get:
@@ -287,6 +289,92 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /v1/experiments/{experiment_key}/assignments:
+    post:
+      operationId: assignExperimentVariant
+      tags: [Experiments]
+      summary: Assign a tenant subject to a deterministic experiment variant
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: experiment_key
+          required: true
+          schema:
+            type: string
+            example: ticket-routing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentAssignmentRequest"
+      responses:
+        "201":
+          description: Experiment assignment
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assignment]
+                properties:
+                  assignment:
+                    $ref: "#/components/schemas/ExperimentAssignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/experiments/{experiment_key}/conversions:
+    post:
+      operationId: recordExperimentConversion
+      tags: [Experiments]
+      summary: Record an idempotent conversion for an assigned tenant subject
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: experiment_key
+          required: true
+          schema:
+            type: string
+            example: ticket-routing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentConversionRequest"
+      responses:
+        "201":
+          description: Experiment conversion
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversion]
+                properties:
+                  conversion:
+                    $ref: "#/components/schemas/ExperimentConversion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /v1/tickets:
     get:
       operationId: listTickets
@@ -646,6 +734,111 @@ components:
               pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
             assignee_membership_id:
               type: integer
+    ExperimentAssignmentRequest:
+      type: object
+      required: [assignment]
+      properties:
+        assignment:
+          type: object
+          required: [subject_key]
+          properties:
+            subject_key:
+              type: string
+              maxLength: 128
+              description: Stable tenant-local subject id used for deterministic bucketing.
+            context:
+              type: object
+              additionalProperties: true
+              description: Optional non-secret assignment context for later analysis.
+    ExperimentConversionRequest:
+      type: object
+      required: [conversion]
+      properties:
+        conversion:
+          type: object
+          required: [subject_key, event_name, idempotency_key]
+          properties:
+            subject_key:
+              type: string
+              maxLength: 128
+            event_name:
+              type: string
+              maxLength: 80
+              pattern: "^[a-z0-9]+([._-][a-z0-9]+)*$"
+              example: ticket_resolved
+            idempotency_key:
+              type: string
+              maxLength: 160
+              description: Tenant-scoped key used to deduplicate conversion retries.
+            metadata:
+              type: object
+              additionalProperties: true
+    ExperimentVariant:
+      type: object
+      required:
+        - key
+        - name
+        - weight
+      properties:
+        key:
+          type: string
+          example: sla-priority
+        name:
+          type: string
+          example: SLA priority
+        weight:
+          type: integer
+          minimum: 1
+    ExperimentAssignment:
+      type: object
+      required:
+        - experiment_key
+        - subject_key
+        - variant
+        - bucket_value
+        - assigned_at
+      properties:
+        experiment_key:
+          type: string
+          example: ticket-routing
+        subject_key:
+          type: string
+          maxLength: 128
+        variant:
+          $ref: "#/components/schemas/ExperimentVariant"
+        bucket_value:
+          type: integer
+          minimum: 0
+        assigned_at:
+          type: string
+          format: date-time
+    ExperimentConversion:
+      type: object
+      required:
+        - experiment_key
+        - subject_key
+        - variant_key
+        - event_name
+        - idempotency_key
+        - occurred_at
+      properties:
+        experiment_key:
+          type: string
+          example: ticket-routing
+        subject_key:
+          type: string
+          maxLength: 128
+        variant_key:
+          type: string
+          example: sla-priority
+        event_name:
+          type: string
+          example: ticket_resolved
+        idempotency_key:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
     Organization:
       type: object
       required:

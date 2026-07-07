@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_31_124000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_07_120000) do
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -26,6 +26,64 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_31_124000) do
     t.index ["membership_id"], name: "index_audit_logs_on_membership_id"
     t.index ["organization_id", "created_at"], name: "index_audit_logs_on_organization_id_and_created_at"
     t.index ["organization_id"], name: "index_audit_logs_on_organization_id"
+  end
+
+  create_table "experiment_assignments", force: :cascade do |t|
+    t.datetime "assigned_at", null: false
+    t.string "bucket_key_digest", null: false
+    t.integer "bucket_value", null: false
+    t.json "context", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.integer "experiment_id", null: false
+    t.integer "experiment_variant_id", null: false
+    t.integer "organization_id", null: false
+    t.string "subject_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["experiment_id", "subject_key"], name: "index_experiment_assignments_on_experiment_id_and_subject_key", unique: true
+    t.index ["experiment_id"], name: "index_experiment_assignments_on_experiment_id"
+    t.index ["experiment_variant_id"], name: "index_experiment_assignments_on_experiment_variant_id"
+    t.index ["organization_id", "subject_key"], name: "idx_on_organization_id_subject_key_5efdf43a7b"
+    t.index ["organization_id"], name: "index_experiment_assignments_on_organization_id"
+    t.check_constraint "bucket_value >= 0", name: "experiment_assignments_bucket_value_non_negative"
+  end
+
+  create_table "experiment_conversions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_name", null: false
+    t.integer "experiment_assignment_id", null: false
+    t.string "idempotency_key", null: false
+    t.json "metadata", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.integer "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["experiment_assignment_id", "event_name"], name: "idx_on_experiment_assignment_id_event_name_2d5d97c490"
+    t.index ["experiment_assignment_id"], name: "index_experiment_conversions_on_experiment_assignment_id"
+    t.index ["organization_id", "idempotency_key"], name: "idx_on_organization_id_idempotency_key_a47c8e86af", unique: true
+    t.index ["organization_id"], name: "index_experiment_conversions_on_organization_id"
+  end
+
+  create_table "experiment_variants", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "experiment_id", null: false
+    t.string "key", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.integer "weight", default: 1, null: false
+    t.index ["experiment_id", "key"], name: "index_experiment_variants_on_experiment_id_and_key", unique: true
+    t.index ["experiment_id"], name: "index_experiment_variants_on_experiment_id"
+    t.check_constraint "weight > 0", name: "experiment_variants_weight_positive"
+  end
+
+  create_table "experiments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "name", null: false
+    t.integer "organization_id", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "key"], name: "index_experiments_on_organization_id_and_key", unique: true
+    t.index ["organization_id"], name: "index_experiments_on_organization_id"
+    t.check_constraint "status IN ('draft', 'active', 'paused', 'archived')", name: "experiments_status_valid"
   end
 
   create_table "memberships", force: :cascade do |t|
@@ -155,6 +213,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_31_124000) do
 
   add_foreign_key "audit_logs", "memberships"
   add_foreign_key "audit_logs", "organizations"
+  add_foreign_key "experiment_assignments", "experiment_variants"
+  add_foreign_key "experiment_assignments", "experiments"
+  add_foreign_key "experiment_assignments", "organizations"
+  add_foreign_key "experiment_conversions", "experiment_assignments"
+  add_foreign_key "experiment_conversions", "organizations"
+  add_foreign_key "experiment_variants", "experiments"
+  add_foreign_key "experiments", "organizations"
   add_foreign_key "memberships", "organizations"
   add_foreign_key "outbound_events", "organizations"
   add_foreign_key "outbound_events", "outbound_events", column: "replayed_from_outbound_event_id"
